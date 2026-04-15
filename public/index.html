@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A Task Marketplace with credit-based incentive system</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="logo" href="/">Task Marketplace</a>
+      <nav class="header-nav" aria-label="Main">
+        <a class="header-link" href="/api/health">API health</a>
+        <div id="header-guest" class="header-auth">
+          <button type="button" id="btn-open-signup" class="btn btn-header btn-ghost">Sign up</button>
+          <button type="button" id="btn-open-signin" class="btn btn-header btn-primary">Sign in</button>
+        </div>
+        <div id="header-user" class="header-user hidden">
+          <span id="header-user-meta" class="header-user-meta"></span>
+          <button type="button" id="btn-signout-header" class="btn btn-header btn-ghost">Sign out</button>
+        </div>
+      </nav>
+    </header>
+
+    <main class="home">
+      <section class="hero">
+        <p class="hero-eyebrow">Credit-based incentives</p>
+        <h1 class="hero-title">A Task Marketplace with credit-based incentive system</h1>
+        <p class="hero-lead">
+          Connect people who need work done with those ready to help—using a simple credit economy so effort,
+          priority, and appreciation stay aligned.
+        </p>
+        <div id="hero-actions" class="hero-actions">
+          <button type="button" id="hero-cta-signup" class="btn btn-cta">Get started</button>
+          <button type="button" id="hero-cta-signin" class="btn btn-cta-secondary">I have an account</button>
+        </div>
+      </section>
+
+      <section class="features" aria-labelledby="features-heading">
+        <h2 id="features-heading" class="section-title">Why use a credit marketplace?</h2>
+        <p class="section-intro">
+          Credits turn vague favours into clear, repeatable trades—so contributors are recognised and requesters
+          can signal what matters most.
+        </p>
+        <ul class="feature-grid">
+          <li class="feature-card">
+            <span class="feature-icon" aria-hidden="true">◇</span>
+            <h3 class="feature-title">Post &amp; scope tasks</h3>
+            <p class="feature-text">
+              Describe the work, attach expectations, and attach a credit value so everyone knows the deal up
+              front.
+            </p>
+          </li>
+          <li class="feature-card">
+            <span class="feature-icon" aria-hidden="true">◎</span>
+            <h3 class="feature-title">Earn as you deliver</h3>
+            <p class="feature-text">
+              Complete tasks for others and grow your balance—your credits reflect real contribution over time.
+            </p>
+          </li>
+          <li class="feature-card">
+            <span class="feature-icon" aria-hidden="true">◈</span>
+            <h3 class="feature-title">Spend to prioritise</h3>
+            <p class="feature-text">
+              Allocate credits to attract the right help, reward speed or quality, and keep the marketplace fair.
+            </p>
+          </li>
+        </ul>
+      </section>
+
+      <section class="steps" aria-labelledby="steps-heading">
+        <h2 id="steps-heading" class="section-title">How it works</h2>
+        <ol class="steps-list">
+          <li>
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Create an account</strong>
+              <span class="step-desc">Sign up in seconds—your profile holds your credit balance.</span>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <strong>List or claim tasks</strong>
+              <span class="step-desc">Post what you need or browse work you can complete for credits.</span>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <strong>Exchange value fairly</strong>
+              <span class="step-desc">Credits move when work is agreed and done—transparent and repeatable.</span>
+            </div>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>SIT725 Group 12 · Task Marketplace</p>
+    </footer>
+
+    <dialog id="modal-signup" class="auth-modal" aria-labelledby="signup-title">
+      <div class="modal-panel">
+        <button type="button" class="modal-close" data-close-modal aria-label="Close dialog">×</button>
+        <h2 id="signup-title" class="modal-title">Create your account</h2>
+        <p class="modal-lead">Start tracking credits and join the marketplace.</p>
+        <form id="form-signup" class="auth-form" novalidate>
+          <label>
+            Email
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+          <label>
+            Password
+            <input type="password" name="password" autocomplete="new-password" minlength="6" required />
+          </label>
+          <button type="submit" class="btn btn-submit">Create account</button>
+        </form>
+        <p id="signup-msg" class="form-msg" role="status"></p>
+      </div>
+    </dialog>
+
+    <dialog id="modal-signin" class="auth-modal" aria-labelledby="signin-title">
+      <div class="modal-panel">
+        <button type="button" class="modal-close" data-close-modal aria-label="Close dialog">×</button>
+        <h2 id="signin-title" class="modal-title">Welcome back</h2>
+        <p class="modal-lead">Sign in with your email and password.</p>
+        <form id="form-signin" class="auth-form" novalidate>
+          <label>
+            Email
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+          <label>
+            Password
+            <input type="password" name="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit" class="btn btn-submit">Sign in</button>
+        </form>
+        <p id="signin-msg" class="form-msg" role="status"></p>
+      </div>
+    </dialog>
+
+    <script src="/js/scripts.js"></script>
+  </body>
+</html>
