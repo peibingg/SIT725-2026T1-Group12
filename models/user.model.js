@@ -4,11 +4,14 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true, trim: true },
-    passwordHash: { type: String, required: true },
-    credits: { type: Number, default: 0, min: 0 },
+    first_name: { type: String, required: true, trim: true },
+    last_name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, unique: true, trim: true, lowercase: true },
+    password_hash: { type: String, required: true, select: false },
+    credit_balance: { type: Number, default: 0, min: 0 },
+    role: { type: String, enum: ['Admin', 'User'], default: 'User' },
   },
-  { timestamps: true }
+  { timestamps: { createdAt: 'created', updatedAt: false } }
 );
 
 module.exports = mongoose.model('User', userSchema);

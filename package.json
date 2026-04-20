@@ -7,12 +7,18 @@
     "start": "node server.js",
     "seed": "node seed.js"
   },
-  "keywords": ["express", "mvc", "mongoose", "task-marketplace"],
+  "keywords": [
+    "express",
+    "mvc",
+    "mongoose",
+    "task-marketplace"
+  ],
   "author": "220086695, s225637677 and s225115009",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "mongoose": "^8.13.2"
   }
 }

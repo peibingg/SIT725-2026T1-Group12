@@ -55,7 +55,7 @@ function updateHeaderAuth() {
     headerGuest.classList.add('hidden');
     headerUser.classList.remove('hidden');
     if (headerUserMeta) {
-      headerUserMeta.textContent = `${user.email} · ${user.credits} credits`;
+      headerUserMeta.textContent = `${user.email} · ${user.credit_balance} credits`;
     }
     heroActions?.classList.add('hidden');
   } else {
@@ -133,9 +133,11 @@ function initForms() {
     e.preventDefault();
     showMsg(signupMsg, '');
     const fd = new FormData(formSignup);
+    const first_name = (fd.get('first_name') || '').toString().trim();
+    const last_name = (fd.get('last_name') || '').toString().trim();
     const email = (fd.get('email') || '').toString().trim();
     const password = (fd.get('password') || '').toString();
-    const { res, data } = await postJson('/api/auth/signup', { email, password });
+    const { res, data } = await postJson('/api/auth/signup', { first_name, last_name, email, password });
     if (res.ok && data.user) {
       setStoredUser(data.user);
       updateHeaderAuth();

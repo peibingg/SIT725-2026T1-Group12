@@ -2,14 +2,17 @@
 
 const mongoose = require('mongoose');
 
+const transactionStatus = ['Active', 'Deleted'];
+
 const transactionSchema = new mongoose.Schema(
   {
-    amount: { type: Number, required: true },
-    fromUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    toUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    taskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', required: true },
+    task_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', required: true },
+    credit: { type: Number, required: true, min: 0 },
+    owner_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    taker_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    status: { type: String, enum: transactionStatus, default: 'Active' },
   },
-  { timestamps: true }
+  { timestamps: { createdAt: 'created', updatedAt: false } }
 );
 
 module.exports = mongoose.model('Transaction', transactionSchema);

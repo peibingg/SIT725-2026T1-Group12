@@ -20,6 +20,11 @@ mongoose.connection.on('error', (err) => {
   console.error('MongoDB connection error:', err.message);
 });
 
+require('./models/user.model');
+require('./models/task.model');
+require('./models/transaction.model');
+require('./models/comment.model');
+
 const authRouter = require('./routes/auth.routes');
 const taskRouter = require('./routes/task.routes');
 const creditRouter = require('./routes/credit.routes');
