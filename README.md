@@ -102,7 +102,26 @@ Source of truth: `models/*.model.js`.
 |--------|---------|-------------|
 | `start` | `npm start` | Runs `node server.js` — Express API + static `public/`. |
 | `seed` | `npm run seed` | Runs `node seed.js` — inserts sample data if DB has no users. |
-| `test` | `npm test` | **Add when the project introduces automated tests** (e.g. Jest + Supertest); not defined in `package.json` on every branch — run `npm run` to see what this clone exposes. |
+| `test` | `npm test` | Runs **Jest** (`NODE_ENV=test`, in-band): API integration, client validator unit tests, and DOM/jsdom tests. No separate E2E runner. |
+
+---
+
+## Automated tests
+
+From the repo root (after `npm install`):
+
+| What | Command |
+|------|---------|
+| **All tests** | `npm test` |
+| **API integration** (Express + Supertest + in-memory Mongo) | `npm test -- tests/auth.integration.test.js` |
+| **Unit** (auth client validation vs backend rules) | `npm test -- tests/authValidation.unit.test.js` |
+| **DOM** (jsdom; e.g. sign-in error UI with mocked `fetch`) | `npm test -- tests/signin.dom.test.js` |
+
+**Watch one file** (optional):
+
+```bash
+NODE_ENV=test ./node_modules/.bin/jest --watch tests/auth.integration.test.js
+```
 
 ---
 
@@ -149,7 +168,7 @@ The static site (`public/index.html`) uses the auth endpoints from the browser.
 ## Testing notes (for contributors)
 
 - After a **fresh clone**, follow **Setup** → **seed** → **open the site** and confirm sign-up / sign-in flows.
-- When **`npm test`** is added to the repo, document the exact command here and in CI so this README stays accurate.
+- Run **`npm test`** before pushing; see **Automated tests** above for per-suite commands.
 - In GitHub/GitLab, preview this README and **click relative links** (e.g. [`docs/`](docs/)) to ensure they resolve.
 
 ---
