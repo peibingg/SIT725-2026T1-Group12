@@ -12,9 +12,14 @@ const ping = (req, res) => {
 
 const signup = async (req, res) => {
   try {
+    const first_name = (req.body.first_name || '').trim();
+    const last_name = (req.body.last_name || '').trim();
     const email = (req.body.email || '').trim().toLowerCase();
     const password = req.body.password || '';
 
+    if (!first_name || !last_name) {
+      return res.status(400).json({ statusCode: 400, message: 'First name and last name are required' });
+    }
     if (!email || !EMAIL_RE.test(email)) {
       return res.status(400).json({ statusCode: 400, message: 'Valid email is required' });
     }
@@ -27,13 +32,26 @@ const signup = async (req, res) => {
       return res.status(409).json({ statusCode: 409, message: 'An account with this email already exists' });
     }
 
-    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const user = await User.create({ email, passwordHash });
+    const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+    const user = await User.create({
+      first_name,
+      last_name,
+      email,
+      password_hash,
+      role: 'User',
+    });
 
     res.status(201).json({
       statusCode: 201,
       message: 'Account created',
-      user: { id: user._id.toString(), email: user.email, credits: user.credits },
+      user: {
+        id: user._id.toString(),
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        credit_balance: user.credit_balance,
+        role: user.role,
+      },
     });
   } catch (err) {
     console.error('signup error:', err.message);
@@ -50,12 +68,12 @@ const signin = async (req, res) => {
       return res.status(400).json({ statusCode: 400, message: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+password_hash');
     if (!user) {
       return res.status(401).json({ statusCode: 401, message: 'Invalid email or password' });
     }
 
-    const match = await bcrypt.compare(password, user.passwordHash);
+    const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
       return res.status(401).json({ statusCode: 401, message: 'Invalid email or password' });
     }
@@ -63,7 +81,14 @@ const signin = async (req, res) => {
     res.json({
       statusCode: 200,
       message: 'Signed in',
-      user: { id: user._id.toString(), email: user.email, credits: user.credits },
+      user: {
+        id: user._id.toString(),
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        credit_balance: user.credit_balance,
+        role: user.role,
+      },
     });
   } catch (err) {
     console.error('signin error:', err.message);
