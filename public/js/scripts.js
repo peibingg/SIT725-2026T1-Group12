@@ -79,6 +79,7 @@ async function postJson(url, body) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    credentials: 'same-origin',
   });
   const data = await res.json().catch(() => ({}));
   return { res, data };
@@ -124,7 +125,12 @@ function initForms() {
   els.heroCtaSignup?.addEventListener('click', openSignup);
   els.heroCtaSignin?.addEventListener('click', openSignin);
 
-  els.btnSignout?.addEventListener('click', () => {
+  els.btnSignout?.addEventListener('click', async () => {
+    try {
+      await postJson('/api/auth/signout', {});
+    } catch (_) {
+      /* still clear client if the server is unreachable */
+    }
     setStoredUser(null);
     updateHeaderAuth();
   });
