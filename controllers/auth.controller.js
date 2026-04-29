@@ -92,7 +92,7 @@ const signin = async (req, res) => {
 
     res.json({
       statusCode: 200,
-      message: 'Signed in',
+      message: 'You have been signed in successfully.',
       user: {
         id: user._id.toString(),
         first_name: user.first_name,
@@ -115,6 +115,9 @@ const me = async (req, res) => {
       req.session.destroy(() => {});
       return res.status(401).json({ statusCode: 401, message: 'Authentication required' });
     }
+
+    res.set('Cache-Control', 'private, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
 
     res.json({
       statusCode: 200,

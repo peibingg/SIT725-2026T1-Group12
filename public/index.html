@@ -16,11 +16,14 @@
           <button type="button" id="btn-open-signin" class="btn btn-header btn-primary">Sign in</button>
         </div>
         <div id="header-user" class="header-user hidden">
+          <a class="header-link" href="/profile.html" id="link-profile">Profile</a>
           <span id="header-user-meta" class="header-user-meta"></span>
           <button type="button" id="btn-signout-header" class="btn btn-header btn-ghost">Sign out</button>
         </div>
       </nav>
     </header>
+
+    <div id="site-flash" class="site-flash hidden" role="status" aria-live="polite"></div>
 
     <main class="home">
       <section class="hero">
@@ -149,6 +152,7 @@
     </dialog>
 
     <script src="/js/authValidation.js"></script>
+    <script src="/js/flash.js"></script>
     <script src="/js/scripts.js"></script>
   </body>
 </html>

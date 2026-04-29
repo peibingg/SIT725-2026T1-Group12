@@ -7,6 +7,7 @@ const path = require('path');
 
 function loadAuthPageShell() {
   document.body.innerHTML = `
+    <div id="site-flash" class="site-flash hidden"></div>
     <div id="header-guest" class="header-auth"></div>
     <div id="header-user" class="header-user hidden"><span id="header-user-meta"></span></div>
     <div id="hero-actions"></div>
@@ -39,6 +40,7 @@ function loadAuthPageShell() {
 function clearScriptCache() {
   jest.resetModules();
   delete require.cache[path.join(__dirname, '../public/js/authValidation.js')];
+  delete require.cache[path.join(__dirname, '../public/js/flash.js')];
   delete require.cache[path.join(__dirname, '../public/js/scripts.js')];
 }
 
@@ -58,6 +60,7 @@ describe('sign-in UI (DOM)', () => {
     });
 
     require('../public/js/authValidation.js');
+    require('../public/js/flash.js');
     require('../public/js/scripts.js');
 
     const form = document.getElementById('form-signin');
@@ -76,5 +79,40 @@ describe('sign-in UI (DOM)', () => {
     );
     expect(msg.textContent).toBe(apiMessage);
     expect(msg.classList.contains('err')).toBe(true);
+  });
+
+  it('redirects to profile after successful sign-in', async () => {
+    const assign = jest.fn();
+    delete window.location;
+    window.location = { assign, replace: jest.fn(), href: '' };
+
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        statusCode: 200,
+        message: 'Signed in',
+        user: {
+          id: '1',
+          email: 'ok@example.com',
+          credit_balance: 0,
+          first_name: 'O',
+          last_name: 'K',
+          role: 'User',
+        },
+      }),
+    });
+
+    require('../public/js/authValidation.js');
+    require('../public/js/flash.js');
+    require('../public/js/scripts.js');
+
+    const form = document.getElementById('form-signin');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    await new Promise((r) => setTimeout(r, 600));
+
+    expect(assign).toHaveBeenCalledWith('/profile.html');
+    expect(sessionStorage.getItem('taskMarketplaceFlash')).toBeTruthy();
   });
 });

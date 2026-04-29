@@ -7,6 +7,7 @@ const {
   MIN_PASSWORD_LENGTH,
   validateSignupPayload,
   validateSigninPayload,
+  validateChangePasswordPayload,
 } = require('../public/js/authValidation');
 
 /** Mirrors controllers/auth.controller.js EMAIL_RE and password length rule. */
@@ -53,5 +54,29 @@ describe('authValidation (parity with backend rules)', () => {
     const src = fs.readFileSync(path.join(__dirname, '../public/js/authValidation.js'), 'utf8');
     expect(src).toMatch(/bcrypt|server|hash/i);
     expect(src.toLowerCase()).toContain('never hash');
+  });
+
+  it('change password: same min length message as signup; confirm mismatch', () => {
+    expect(
+      validateChangePasswordPayload({
+        current_password: 'old',
+        new_password: '12345',
+        confirm_password: '12345',
+      }).message,
+    ).toBe('Password must be at least 6 characters');
+    expect(
+      validateChangePasswordPayload({
+        current_password: 'old',
+        new_password: 'abcdef',
+        confirm_password: 'abcdeg',
+      }).message,
+    ).toBe('New password and confirmation do not match');
+    expect(
+      validateChangePasswordPayload({
+        current_password: 'old',
+        new_password: 'abcdef',
+        confirm_password: 'abcdef',
+      }).ok,
+    ).toBe(true);
   });
 });
