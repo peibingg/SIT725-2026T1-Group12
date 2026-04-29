@@ -2,6 +2,7 @@
 
 const bcrypt = require('bcryptjs');
 const User = require('../models/user.model');
+const { assertPasswordMeetsPolicy } = require('../validators/auth.validation');
 
 const SALT_ROUNDS = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,8 +30,9 @@ const signup = async (req, res) => {
     if (!email || !EMAIL_RE.test(email)) {
       return res.status(400).json({ statusCode: 400, message: 'Valid email is required' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ statusCode: 400, message: 'Password must be at least 6 characters' });
+    const passwordPolicy = assertPasswordMeetsPolicy(password);
+    if (!passwordPolicy.ok) {
+      return res.status(400).json({ statusCode: 400, message: passwordPolicy.message });
     }
 
     const existing = await User.findOne({ email });
@@ -131,6 +133,48 @@ const me = async (req, res) => {
   }
 };
 
+const changePassword = async (req, res) => {
+  try {
+    const current_password = req.body.current_password ?? '';
+    const new_password = req.body.new_password ?? '';
+    const confirm_password = req.body.confirm_password;
+
+    if (!String(current_password) || !String(new_password)) {
+      return res.status(400).json({ statusCode: 400, message: 'Current password and new password are required' });
+    }
+
+    if (confirm_password !== undefined && confirm_password !== null && String(confirm_password) !== '') {
+      if (String(new_password) !== String(confirm_password)) {
+        return res.status(400).json({ statusCode: 400, message: 'New password and confirmation do not match' });
+      }
+    }
+
+    const passwordPolicy = assertPasswordMeetsPolicy(new_password);
+    if (!passwordPolicy.ok) {
+      return res.status(400).json({ statusCode: 400, message: passwordPolicy.message });
+    }
+
+    const user = await User.findById(req.session.userId).select('+password_hash');
+    if (!user) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ statusCode: 401, message: 'Authentication required' });
+    }
+
+    const match = await bcrypt.compare(String(current_password), user.password_hash);
+    if (!match) {
+      return res.status(401).json({ statusCode: 401, message: 'Current password is incorrect' });
+    }
+
+    user.password_hash = await bcrypt.hash(String(new_password), SALT_ROUNDS);
+    await user.save();
+
+    res.json({ statusCode: 200, message: 'Password updated' });
+  } catch (err) {
+    console.error('changePassword error:', err.message);
+    res.status(500).json({ statusCode: 500, message: 'Could not update password' });
+  }
+};
+
 const signout = (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -147,4 +191,4 @@ const signout = (req, res) => {
   });
 };
 
-module.exports = { ping, signup, signin, me, signout };
+module.exports = { ping, signup, signin, me, changePassword, signout };
