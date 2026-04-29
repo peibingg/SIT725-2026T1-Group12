@@ -1,5 +1,10 @@
 'use strict';
 
+/**
+ * Auth UI: passwords are sent to the server in plaintext over HTTPS in production; the API hashes
+ * with bcrypt. Never hash passwords in this file, never log password fields, never store password_hash.
+ * Session cookie (express-session) requires fetch(..., { credentials: 'same-origin' }) — see postJson.
+ */
 const STORAGE_KEY = 'taskMarketplaceUser';
 
 function getStoredUser() {
@@ -74,6 +79,10 @@ function showMsg(el, text, ok) {
   }
 }
 
+function getAuthValidation() {
+  return globalThis.TaskMarketplaceAuth;
+}
+
 async function postJson(url, body) {
   const res = await fetch(url, {
     method: 'POST',
@@ -103,6 +112,7 @@ function initForms() {
   const formSignin = document.getElementById('form-signin');
   const signupMsg = document.getElementById('signup-msg');
   const signinMsg = document.getElementById('signin-msg');
+  const authVal = getAuthValidation();
 
   wireModal(els.modalSignup);
   wireModal(els.modalSignin);
@@ -143,6 +153,15 @@ function initForms() {
     const last_name = (fd.get('last_name') || '').toString().trim();
     const email = (fd.get('email') || '').toString().trim();
     const password = (fd.get('password') || '').toString();
+
+    if (authVal) {
+      const v = authVal.validateSignupPayload({ first_name, last_name, email, password });
+      if (!v.ok) {
+        showMsg(signupMsg, v.message, false);
+        return;
+      }
+    }
+
     const { res, data } = await postJson('/api/auth/signup', { first_name, last_name, email, password });
     if (res.ok && data.user) {
       setStoredUser(data.user);
@@ -161,6 +180,15 @@ function initForms() {
     const fd = new FormData(formSignin);
     const email = (fd.get('email') || '').toString().trim();
     const password = (fd.get('password') || '').toString();
+
+    if (authVal) {
+      const v = authVal.validateSigninPayload({ email, password });
+      if (!v.ok) {
+        showMsg(signinMsg, v.message, false);
+        return;
+      }
+    }
+
     const { res, data } = await postJson('/api/auth/signin', { email, password });
     if (res.ok && data.user) {
       setStoredUser(data.user);
@@ -168,7 +196,8 @@ function initForms() {
       showMsg(signinMsg, data.message || 'Signed in.', true);
       setTimeout(() => closeModal(els.modalSignin), 600);
     } else {
-      showMsg(signinMsg, data.message || 'Could not sign in.', false);
+      const msg = data.message || 'Could not sign in.';
+      showMsg(signinMsg, msg, false);
     }
   });
 }
