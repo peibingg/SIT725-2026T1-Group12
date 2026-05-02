@@ -41,11 +41,33 @@ function validateSigninPayload({ email, password }) {
   return { ok: true, message: '' };
 }
 
+/** Same new-password rules as sign-up (length); confirm must match new (aligns with PATCH /api/auth/password). */
+function validateChangePasswordPayload({ current_password, new_password, confirm_password }) {
+  const cur = (current_password || '').trim();
+  const nw = new_password == null ? '' : String(new_password);
+  const cf = confirm_password == null ? '' : String(confirm_password);
+
+  if (!cur || !nw) {
+    return { ok: false, message: 'Current password and new password are required' };
+  }
+  if (!cf) {
+    return { ok: false, message: 'Please confirm your new password' };
+  }
+  if (nw.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, message: 'Password must be at least 6 characters' };
+  }
+  if (nw !== cf) {
+    return { ok: false, message: 'New password and confirmation do not match' };
+  }
+  return { ok: true, message: '' };
+}
+
 const authValidationApi = {
   EMAIL_RE,
   MIN_PASSWORD_LENGTH,
   validateSignupPayload,
   validateSigninPayload,
+  validateChangePasswordPayload,
 };
 
 if (typeof globalThis !== 'undefined') {

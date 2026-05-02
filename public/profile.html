@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My profile — Task Marketplace</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="logo" href="/">Task Marketplace</a>
+      <nav class="header-nav" aria-label="Main">
+        <a class="header-link" href="/">Home</a>
+        <a class="header-link" href="/api/health">API health</a>
+        <div id="header-guest" class="header-auth">
+          <button type="button" id="btn-open-signup" class="btn btn-header btn-ghost">Sign up</button>
+          <button type="button" id="btn-open-signin" class="btn btn-header btn-primary">Sign in</button>
+        </div>
+        <div id="header-user" class="header-user hidden">
+          <a class="header-link" href="/profile.html" id="link-profile" aria-current="page">Profile</a>
+          <span id="header-user-meta" class="header-user-meta"></span>
+          <button type="button" id="btn-signout-header" class="btn btn-header btn-ghost">Sign out</button>
+        </div>
+      </nav>
+    </header>
+
+    <div id="site-flash" class="site-flash hidden" role="status" aria-live="polite"></div>
+
+    <main id="profile-page" class="profile-page">
+      <div class="profile-inner">
+        <header class="profile-intro">
+          <h1 class="profile-title">My account</h1>
+          <p class="profile-lead">Your balance is loaded from the server whenever you open or refresh this page.</p>
+          <button type="button" id="btn-profile-refresh" class="btn btn-ghost btn-profile-refresh">Refresh balance</button>
+        </header>
+
+        <section class="profile-balance-card" aria-labelledby="balance-heading">
+          <h2 id="balance-heading" class="visually-hidden">Credit balance</h2>
+          <p class="profile-balance-label">Available credits</p>
+          <p id="profile-credit-balance" class="profile-credit-value" aria-live="polite">—</p>
+          <dl class="profile-identity" id="profile-identity">
+            <div><dt>Name</dt><dd id="profile-name">—</dd></div>
+            <div><dt>Email</dt><dd id="profile-email">—</dd></div>
+            <div><dt>Role</dt><dd id="profile-role">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="profile-password-card" aria-labelledby="password-heading">
+          <h2 id="password-heading" class="profile-section-title">Change password</h2>
+          <p class="profile-section-lead">Use a strong password. The server validates and stores it securely.</p>
+          <form id="form-change-password" class="auth-form" novalidate autocomplete="off">
+            <label>
+              Current password
+              <input type="password" name="current_password" autocomplete="current-password" required />
+            </label>
+            <label>
+              New password
+              <input type="password" name="new_password" autocomplete="new-password" minlength="6" required />
+            </label>
+            <label>
+              Confirm new password
+              <input type="password" name="confirm_password" autocomplete="new-password" minlength="6" required />
+            </label>
+            <button type="submit" class="btn btn-submit">Update password</button>
+          </form>
+          <p id="profile-password-msg" class="form-msg" role="status"></p>
+        </section>
+
+        <p id="profile-load-msg" class="form-msg profile-load-msg" role="status"></p>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>SIT725 Group 12 · Task Marketplace</p>
+    </footer>
+
+    <dialog id="modal-signup" class="auth-modal" aria-labelledby="signup-title">
+      <div class="modal-panel">
+        <button type="button" class="modal-close" data-close-modal aria-label="Close dialog">×</button>
+        <h2 id="signup-title" class="modal-title">Create your account</h2>
+        <p class="modal-lead">Start tracking credits and join the marketplace.</p>
+        <form id="form-signup" class="auth-form" novalidate>
+          <label>
+            First name
+            <input type="text" name="first_name" autocomplete="given-name" required />
+          </label>
+          <label>
+            Last name
+            <input type="text" name="last_name" autocomplete="family-name" required />
+          </label>
+          <label>
+            Email
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+          <label>
+            Password
+            <input type="password" name="password" autocomplete="new-password" minlength="6" required />
+          </label>
+          <button type="submit" class="btn btn-submit">Create account</button>
+        </form>
+        <p id="signup-msg" class="form-msg" role="status"></p>
+      </div>
+    </dialog>
+
+    <dialog id="modal-signin" class="auth-modal" aria-labelledby="signin-title">
+      <div class="modal-panel">
+        <button type="button" class="modal-close" data-close-modal aria-label="Close dialog">×</button>
+        <h2 id="signin-title" class="modal-title">Welcome back</h2>
+        <p class="modal-lead">Sign in with your email and password.</p>
+        <form id="form-signin" class="auth-form" novalidate>
+          <label>
+            Email
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+          <label>
+            Password
+            <input type="password" name="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit" class="btn btn-submit">Sign in</button>
+        </form>
+        <p id="signin-msg" class="form-msg" role="status"></p>
+      </div>
+    </dialog>
+
+    <script src="/js/authValidation.js"></script>
+    <script src="/js/flash.js"></script>
+    <script src="/js/scripts.js"></script>
+    <script src="/js/profile.js"></script>
+  </body>
+</html>

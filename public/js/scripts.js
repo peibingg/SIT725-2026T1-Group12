@@ -143,6 +143,11 @@ function initForms() {
     }
     setStoredUser(null);
     updateHeaderAuth();
+    globalThis.TaskMarketplaceFlash?.set({
+      type: 'ok',
+      message: 'You have been signed out.',
+    });
+    window.location.replace('/');
   });
 
   formSignup?.addEventListener('submit', async (e) => {
@@ -193,8 +198,16 @@ function initForms() {
     if (res.ok && data.user) {
       setStoredUser(data.user);
       updateHeaderAuth();
-      showMsg(signinMsg, data.message || 'Signed in.', true);
-      setTimeout(() => closeModal(els.modalSignin), 600);
+      showMsg(signinMsg, data.message || 'You have been logged in.', true);
+      formSignin?.reset();
+      setTimeout(() => {
+        closeModal(els.modalSignin);
+        globalThis.TaskMarketplaceFlash?.set({
+          type: 'ok',
+          message: data.message || 'Signed in successfully.',
+        });
+        window.location.assign('/profile.html');
+      }, 500);
     } else {
       const msg = data.message || 'Could not sign in.';
       showMsg(signinMsg, msg, false);
@@ -204,3 +217,6 @@ function initForms() {
 
 initForms();
 updateHeaderAuth();
+if (!document.getElementById('profile-page')) {
+  globalThis.TaskMarketplaceFlash?.consume();
+}
