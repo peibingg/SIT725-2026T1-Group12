@@ -52,6 +52,7 @@
                   <th scope="col">Taker</th>
                   <th scope="col">Status</th>
                   <th scope="col">Actions</th>
+                  <th scope="col">Progress</th>
                 </tr>
               </thead>
               <tbody id="tasks-open-body"></tbody>
@@ -74,9 +75,33 @@
                   <th scope="col">Taker</th>
                   <th scope="col">Status</th>
                   <th scope="col">Actions</th>
+                  <th scope="col">Progress</th>
                 </tr>
               </thead>
               <tbody id="tasks-mine-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="tasks-section" aria-labelledby="owner-heading">
+          <h2 id="owner-heading" class="tasks-section-title">Your tasks as owner</h2>
+          <p class="tasks-section-lead">Work you posted that someone has taken (read progress updates below).</p>
+          <div id="tasks-owner-empty" class="tasks-empty hidden" role="status">Nothing here yet. When someone claims your open task, it will appear in this list.</div>
+          <div class="tasks-table-wrap">
+            <table class="tasks-table" id="tasks-owner-table" aria-label="Your tasks as owner">
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Owner</th>
+                  <th scope="col">Credits</th>
+                  <th scope="col">Taker</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                  <th scope="col">Progress</th>
+                </tr>
+              </thead>
+              <tbody id="tasks-owner-body"></tbody>
             </table>
           </div>
         </section>
@@ -139,6 +164,7 @@
     <script src="/js/flash.js"></script>
     <script src="/js/scripts.js"></script>
     <script src="/js/tasksUi.js"></script>
+    <script src="/js/taskCommentsUi.js"></script>
     <script src="/js/tasks.js"></script>
   </body>
 </html>
