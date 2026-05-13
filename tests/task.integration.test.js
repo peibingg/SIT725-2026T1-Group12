@@ -2,31 +2,36 @@
 
 const request = require('supertest');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const { MongoMemoryReplSet } = require('mongodb-memory-server');
 const bcrypt = require('bcryptjs');
 const User = require('../models/user.model');
 const Task = require('../models/task.model');
+const Transaction = require('../models/transaction.model');
 
 let app;
-let mongoServer;
+let mongoReplSet;
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  process.env.MONGODB_URI = mongoServer.getUri();
+  mongoReplSet = await MongoMemoryReplSet.create({
+    replSet: { count: 1, name: 'rsTaskStatus' },
+  });
+  await mongoReplSet.waitUntilRunning();
+  process.env.MONGODB_URI = mongoReplSet.getUri();
   process.env.SESSION_SECRET = 'test-session-secret-for-jest-tasks';
   process.env.NODE_ENV = 'test';
   await mongoose.connect(process.env.MONGODB_URI);
   app = require('../app');
-});
+}, 120000);
 
 afterAll(async () => {
   await mongoose.disconnect();
-  if (mongoServer) await mongoServer.stop();
+  if (mongoReplSet) await mongoReplSet.stop();
 });
 
 beforeEach(async () => {
   await User.deleteMany({});
   await Task.deleteMany({});
+  await Transaction.deleteMany({});
 });
 
 async function signup(agent, email, name = 'T') {
@@ -248,6 +253,27 @@ describe('POST /api/tasks/:id/take', () => {
 
     await takerAgent.post(`/api/tasks/${task._id}/take`).send({}).expect(409);
   });
+
+  it('Take on In Progress task returns 409 (no second claim)', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    const other = request.agent(app);
+    await signup(ownerAgent, 'ip-o@example.com', 'IPO');
+    await signup(takerAgent, 'ip-t@example.com', 'IPT');
+    await signup(other, 'ip-x@example.com', 'IPX');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    const task = await Task.create({
+      title: 'Taken',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 5,
+      status: 'In Progress',
+    });
+
+    await other.post(`/api/tasks/${task._id}/take`).send({}).expect(409);
+  });
 });
 
 describe('POST /api/tasks/:id/complete', () => {
@@ -358,5 +384,153 @@ describe('POST /api/tasks/:id/complete', () => {
     });
 
     await ownerAgent.post(`/api/tasks/${task._id}/complete`).send({}).expect(403);
+  });
+});
+
+describe('POST /api/tasks/:id/approve', () => {
+  it('returns 401 without session', async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    await request(app).post(`/api/tasks/${fakeId}/approve`).send({}).expect(401);
+  });
+
+  it('owner approves Completed: Finalised, payout txn, exact credit transfer', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'ap-o@example.com', 'APO');
+    await signup(takerAgent, 'ap-t@example.com', 'APT');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap-o@example.com' }, { $set: { credit_balance: 100 } });
+    await User.updateOne({ email: 'ap-t@example.com' }, { $set: { credit_balance: 5 } });
+
+    const task = await Task.create({
+      title: 'Pay me',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 30,
+      status: 'Completed',
+    });
+
+    const res = await ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(200);
+    expect(res.body.task.status).toBe('Finalised');
+
+    const ownerBal = (await User.findOne({ email: 'ap-o@example.com' }).lean()).credit_balance;
+    const takerBal = (await User.findOne({ email: 'ap-t@example.com' }).lean()).credit_balance;
+    expect(ownerBal).toBe(70);
+    expect(takerBal).toBe(35);
+
+    const payout = await Transaction.findOne({ task_id: task._id, purpose: 'Payout', status: 'Active' }).lean();
+    expect(payout).toBeTruthy();
+    expect(payout.credit).toBe(30);
+  });
+
+  it('second approve returns 409 and balances unchanged', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'ap2-o@example.com', 'AP2O');
+    await signup(takerAgent, 'ap2-t@example.com', 'AP2T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap2-o@example.com' }, { $set: { credit_balance: 50 } });
+    await User.updateOne({ email: 'ap2-t@example.com' }, { $set: { credit_balance: 10 } });
+
+    const task = await Task.create({
+      title: 'Once',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 15,
+      status: 'Completed',
+    });
+
+    await ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(200);
+    const ownerAfterFirst = (await User.findOne({ email: 'ap2-o@example.com' }).lean()).credit_balance;
+    const takerAfterFirst = (await User.findOne({ email: 'ap2-t@example.com' }).lean()).credit_balance;
+
+    const res = await ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(409);
+    expect(res.body.statusCode).toBe(409);
+
+    const ownerAfterSecond = (await User.findOne({ email: 'ap2-o@example.com' }).lean()).credit_balance;
+    const takerAfterSecond = (await User.findOne({ email: 'ap2-t@example.com' }).lean()).credit_balance;
+    expect(ownerAfterSecond).toBe(ownerAfterFirst);
+    expect(takerAfterSecond).toBe(takerAfterFirst);
+  });
+
+  it('taker cannot approve (403)', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'ap3-o@example.com', 'AP3O');
+    await signup(takerAgent, 'ap3-t@example.com', 'AP3T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap3-o@example.com' }, { $set: { credit_balance: 40 } });
+
+    const task = await Task.create({
+      title: 'Owner only',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 10,
+      status: 'Completed',
+    });
+
+    await takerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(403);
+  });
+
+  it('owner with insufficient credits gets 400', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'ap4-o@example.com', 'AP4O');
+    await signup(takerAgent, 'ap4-t@example.com', 'AP4T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap4-o@example.com' }, { $set: { credit_balance: 5 } });
+
+    const task = await Task.create({
+      title: 'Too big',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 20,
+      status: 'Completed',
+    });
+
+    const res = await ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(400);
+    expect(res.body.statusCode).toBe(400);
+
+    const fresh = await Task.findById(task._id).lean();
+    expect(fresh.status).toBe('Completed');
+    const nPayout = await Transaction.countDocuments({ task_id: task._id, purpose: 'Payout' });
+    expect(nPayout).toBe(0);
+  });
+
+  it('concurrent approve: one success and one conflict or already paid', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'ap5-o@example.com', 'AP5O');
+    await signup(takerAgent, 'ap5-t@example.com', 'AP5T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap5-o@example.com' }, { $set: { credit_balance: 200 } });
+
+    const task = await Task.create({
+      title: 'Race approve',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 12,
+      status: 'Completed',
+    });
+
+    const [r1, r2] = await Promise.all([
+      ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}),
+      ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}),
+    ]);
+
+    const codes = [r1.status, r2.status].sort();
+    expect(codes).toEqual([200, 409]);
+    const payoutCount = await Transaction.countDocuments({ task_id: task._id, purpose: 'Payout', status: 'Active' });
+    expect(payoutCount).toBe(1);
   });
 });

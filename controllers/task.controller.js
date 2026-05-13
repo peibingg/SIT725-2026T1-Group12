@@ -2,8 +2,9 @@
 
 const mongoose = require('mongoose');
 const Task = require('../models/task.model');
+const taskStatusService = require('../services/taskStatus.service');
 
-const USER_POPULATE_SELECT = 'first_name last_name email';
+const USER_POPULATE_SELECT = taskStatusService.USER_POPULATE_SELECT;
 
 function serializeUser(ref) {
   if (!ref) return null;
@@ -74,7 +75,6 @@ const browse = async (req, res) => {
       openForMe: openForMe.map((t) => serializeTask(t)),
       myAsTaker: myAsTaker.map((t) => serializeTask(t)),
       meta: {
-        /** Open tasks you own (still seeking a taker); excluded from openForMe by design. */
         myPostedOpenCount: myPostedOpenCount,
       },
     });
@@ -94,39 +94,23 @@ const takeTask = async (req, res) => {
   const userId = parseUserId(req);
 
   try {
-    const updated = await Task.findOneAndUpdate(
-      {
-        _id: taskId,
-        status: 'Open',
-        taker_user_id: null,
-        owner_user_id: { $ne: userId },
-      },
-      { $set: { status: 'In Progress', taker_user_id: userId } },
-      { new: true }
-    )
-      .populate('owner_user_id', USER_POPULATE_SELECT)
-      .populate('taker_user_id', USER_POPULATE_SELECT);
-
-    if (updated) {
+    const r = await taskStatusService.claimTask({ taskId, userId });
+    if (r.ok) {
       return res.json({
         statusCode: 200,
         message: 'Task claimed',
-        task: serializeTask(updated),
+        task: serializeTask(r.task),
       });
     }
-
-    const task = await Task.findById(taskId);
-    if (!task) {
+    if (r.error === 'NOT_FOUND') {
       return res.status(404).json({ statusCode: 404, message: 'Task not found' });
     }
-
-    if (task.owner_user_id.equals(userId)) {
+    if (r.error === 'OWN_TASK') {
       return res.status(403).json({ statusCode: 403, message: 'You cannot claim your own task' });
     }
-
     return res.status(409).json({
       statusCode: 409,
-      message: 'Task is not available to claim',
+      message: r.message || 'Task is not available to claim',
     });
   } catch (err) {
     console.error('takeTask error:', err.message);
@@ -144,38 +128,23 @@ const completeTask = async (req, res) => {
   const userId = parseUserId(req);
 
   try {
-    const updated = await Task.findOneAndUpdate(
-      {
-        _id: taskId,
-        status: 'In Progress',
-        taker_user_id: userId,
-      },
-      { $set: { status: 'Completed' } },
-      { new: true }
-    )
-      .populate('owner_user_id', USER_POPULATE_SELECT)
-      .populate('taker_user_id', USER_POPULATE_SELECT);
-
-    if (updated) {
+    const r = await taskStatusService.completeTaskByTaker({ taskId, userId });
+    if (r.ok) {
       return res.json({
         statusCode: 200,
         message: 'Task marked completed',
-        task: serializeTask(updated),
+        task: serializeTask(r.task),
       });
     }
-
-    const task = await Task.findById(taskId);
-    if (!task) {
+    if (r.error === 'NOT_FOUND') {
       return res.status(404).json({ statusCode: 404, message: 'Task not found' });
     }
-
-    if (!task.taker_user_id || !task.taker_user_id.equals(userId)) {
+    if (r.error === 'NOT_TAKER') {
       return res.status(403).json({ statusCode: 403, message: 'Only the assigned taker can complete this task' });
     }
-
     return res.status(409).json({
       statusCode: 409,
-      message: 'Task is not in progress',
+      message: r.message || 'Task is not in progress',
     });
   } catch (err) {
     console.error('completeTask error:', err.message);
@@ -183,4 +152,56 @@ const completeTask = async (req, res) => {
   }
 };
 
-module.exports = { ping, browse, takeTask, completeTask };
+const approveTask = async (req, res) => {
+  const id = req.params.id;
+  if (!mongoose.isValidObjectId(id)) {
+    return invalidIdResponse(res);
+  }
+
+  const taskId = new mongoose.Types.ObjectId(id);
+  const ownerUserId = parseUserId(req);
+
+  try {
+    const r = await taskStatusService.approveCompletedByOwner({ taskId, ownerUserId });
+    if (r.ok) {
+      return res.json({
+        statusCode: 200,
+        message: 'Task finalised and credits transferred',
+        task: serializeTask(r.task),
+      });
+    }
+    if (r.error === 'NOT_FOUND') {
+      return res.status(404).json({ statusCode: 404, message: 'Task not found' });
+    }
+    if (r.error === 'NOT_OWNER') {
+      return res.status(403).json({ statusCode: 403, message: 'Only the task owner can approve payout' });
+    }
+    if (r.error === 'INSUFFICIENT_CREDITS') {
+      return res.status(400).json({
+        statusCode: 400,
+        message: r.message || 'Insufficient credits to pay the taker',
+      });
+    }
+    if (r.error === 'INVALID_TASK') {
+      return res.status(400).json({ statusCode: 400, message: r.message || 'Invalid task for payout' });
+    }
+    if (r.error === 'ALREADY_PAID') {
+      return res.status(409).json({
+        statusCode: 409,
+        message: r.message || 'Payout already recorded for this task',
+      });
+    }
+    if (r.error === 'WRONG_STATE' || r.error === 'CONFLICT') {
+      return res.status(409).json({
+        statusCode: 409,
+        message: r.message || 'Task cannot be approved in its current state',
+      });
+    }
+    return res.status(409).json({ statusCode: 409, message: r.message || 'Could not approve task' });
+  } catch (err) {
+    console.error('approveTask error:', err.message);
+    res.status(500).json({ statusCode: 500, message: 'Could not approve task' });
+  }
+};
+
+module.exports = { ping, browse, takeTask, completeTask, approveTask };
