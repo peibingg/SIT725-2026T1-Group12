@@ -4,12 +4,12 @@
  * Tasks page: GET /api/tasks/browse, POST take / complete with credentials: 'same-origin'.
  * Uses TaskMarketplaceTasksUi for labels and description truncation (see tasksUi.js).
  */
-const STORAGE_KEY = 'taskMarketplaceUser';
-const RETURN_URL_KEY = 'taskMarketplaceReturnUrl';
+const TM_STORAGE_USER_KEY = 'taskMarketplaceUser';
+const TM_STORAGE_RETURN_URL_KEY = 'taskMarketplaceReturnUrl';
 
 function getStoredUser() {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(TM_STORAGE_USER_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -64,7 +64,7 @@ async function ensureSessionUserForTasksPage() {
       session.setStoredUser(data.user);
     } else {
       try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
+        sessionStorage.setItem(TM_STORAGE_USER_KEY, JSON.stringify(data.user));
       } catch (_) {
         /* ignore */
       }
@@ -226,8 +226,8 @@ async function loadBrowse() {
     const { res, data } = await getJson('/api/tasks/browse');
     if (res.status === 401) {
       try {
-        sessionStorage.removeItem(STORAGE_KEY);
-        sessionStorage.setItem(RETURN_URL_KEY, '/tasks.html');
+        sessionStorage.removeItem(TM_STORAGE_USER_KEY);
+        sessionStorage.setItem(TM_STORAGE_RETURN_URL_KEY, '/tasks.html');
       } catch (_) {
         /* ignore */
       }
@@ -354,7 +354,7 @@ function initTasksPage() {
     const ok = await ensureSessionUserForTasksPage();
     if (!ok) {
       try {
-        sessionStorage.setItem(RETURN_URL_KEY, '/tasks.html');
+        sessionStorage.setItem(TM_STORAGE_RETURN_URL_KEY, '/tasks.html');
       } catch (_) {
         /* ignore */
       }

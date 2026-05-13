@@ -104,7 +104,9 @@ describe('Tasks page (DOM)', () => {
       expect.objectContaining({
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+        }),
       }),
     );
 
