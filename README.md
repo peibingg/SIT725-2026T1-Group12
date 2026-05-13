@@ -113,7 +113,7 @@ From the repo root (after `npm install`):
 | What | Command |
 |------|---------|
 | **All tests** | `npm test` |
-| **API integration** (Express + Supertest + in-memory Mongo) | `npm test -- tests/auth.integration.test.js` |
+| **API integration** (Express + Supertest + in-memory Mongo) | `npm test -- tests/auth.integration.test.js` · `npm test -- tests/task.integration.test.js` |
 | **Unit** (auth client validation vs backend rules) | `npm test -- tests/authValidation.unit.test.js` |
 | **DOM** (jsdom; e.g. sign-in error UI with mocked `fetch`) | `npm test -- tests/signin.dom.test.js` |
 
@@ -136,6 +136,9 @@ Base URL: `http://localhost:<PORT>` (default port **3000**).
 | POST | `/api/auth/signup` | Register (JSON: `first_name`, `last_name`, `email`, `password`). Passwords are **bcrypt-hashed**; response omits `password_hash`. |
 | POST | `/api/auth/signin` | Sign in with `email` / `password`. Returns JSON `user` (client may store in `sessionStorage` for the current UI). |
 | GET | `/api/tasks/ping` | Tasks router smoke test. |
+| GET | `/api/tasks/browse` | **Session required.** Returns `{ openForMe, myAsTaker }`: takeable **Open** tasks (no taker, not owned by you) and tasks where you are **taker** with status **In Progress**, **Completed**, or **Finalised**. Each task includes `owner` / `taker` as `{ id, first_name, last_name, email }` (no `password_hash`). |
+| POST | `/api/tasks/:id/take` | **Session required.** Atomically claims an **Open** task with no taker if you are not the owner → **In Progress** and you become taker. **409** if already claimed or wrong state; **403** if you own the task; **404** if missing. |
+| POST | `/api/tasks/:id/complete` | **Session required.** Taker only: **In Progress** → **Completed**. **403** if not the assigned taker; **409** if not in progress; **404** if missing. |
 | GET | `/api/credits/ping` | Credits router smoke test. |
 
 The static site (`public/index.html`) uses the auth endpoints from the browser.
