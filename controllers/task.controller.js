@@ -46,7 +46,7 @@ const browse = async (req, res) => {
   try {
     const userId = parseUserId(req);
 
-    const [openForMe, myAsTaker] = await Promise.all([
+    const [openForMe, myAsTaker, myPostedOpenCount] = await Promise.all([
       Task.find({
         status: 'Open',
         taker_user_id: null,
@@ -62,12 +62,21 @@ const browse = async (req, res) => {
         .sort({ created: -1 })
         .populate('owner_user_id', USER_POPULATE_SELECT)
         .populate('taker_user_id', USER_POPULATE_SELECT),
+      Task.countDocuments({
+        status: 'Open',
+        taker_user_id: null,
+        owner_user_id: userId,
+      }),
     ]);
 
     res.json({
       statusCode: 200,
       openForMe: openForMe.map((t) => serializeTask(t)),
       myAsTaker: myAsTaker.map((t) => serializeTask(t)),
+      meta: {
+        /** Open tasks you own (still seeking a taker); excluded from openForMe by design. */
+        myPostedOpenCount: myPostedOpenCount,
+      },
     });
   } catch (err) {
     console.error('browse error:', err.message);

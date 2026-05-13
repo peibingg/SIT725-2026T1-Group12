@@ -2,7 +2,8 @@
 
 /**
  * Inserts sample users, tasks, transactions, and comments when the database is empty.
- * Seeds 6 users (5 regular + 1 Admin); each demo user owns at least one task with varied statuses.
+ * Seeds 6 users (5 regular + 1 Admin); tasks include varied statuses, with extra rows for alice@example.com
+ * as owner and as taker (Open / In Progress / Completed / Finalised) for demos.
  * Requires MongoDB running at MONGODB_URI (default mongodb://127.0.0.1:27017/taskMarketplaceDB).
  */
 const bcrypt = require('bcryptjs');
@@ -144,6 +145,52 @@ async function main() {
 
   const [tAliceOpen, tBenProgress, tChenDone, tDanaFinal, tEveOpen, tAliceProgress, tBenDone] = tasks;
 
+  /** Extra tasks so alice@example.com sees varied statuses as taker and as owner (browse / profile demos). */
+  const aliceSeedTasks = await Task.insertMany([
+    {
+      title: 'Peer-review CS draft chapter',
+      description: 'Ben owns this; Alice is mid-review for course credit.',
+      owner_user_id: ben._id,
+      taker_user_id: alice._id,
+      credit: 18,
+      status: 'In Progress',
+    },
+    {
+      title: 'Weekly release notes draft',
+      description: 'Eve owns this; Alice finished the writing pass.',
+      owner_user_id: eve._id,
+      taker_user_id: alice._id,
+      credit: 22,
+      status: 'Completed',
+    },
+    {
+      title: 'Handbook style consistency pass',
+      description: 'Chen owns this; Alice completed work and owner finalised.',
+      owner_user_id: chen._id,
+      taker_user_id: alice._id,
+      credit: 12,
+      status: 'Finalised',
+    },
+    {
+      title: 'Portfolio PDF export polish',
+      description: 'Alice owns this; Dana delivered the export fixes.',
+      owner_user_id: alice._id,
+      taker_user_id: dana._id,
+      credit: 28,
+      status: 'Completed',
+    },
+    {
+      title: 'Bug triage workshop prep',
+      description: 'Second open task owned by Alice (no taker yet) for owner-side demos.',
+      owner_user_id: alice._id,
+      taker_user_id: null,
+      credit: 10,
+      status: 'Open',
+    },
+  ]);
+
+  const [tAliceTakerProgress, tAliceTakerDone, tAliceTakerFinal, tAliceOwnerDone] = aliceSeedTasks;
+
   await Transaction.insertMany([
     {
       task_id: tBenProgress._id,
@@ -187,6 +234,34 @@ async function main() {
       taker_user_id: eve._id,
       status: 'Deleted',
     },
+    {
+      task_id: tAliceTakerProgress._id,
+      credit: 18,
+      owner_user_id: ben._id,
+      taker_user_id: alice._id,
+      status: 'Active',
+    },
+    {
+      task_id: tAliceTakerDone._id,
+      credit: 22,
+      owner_user_id: eve._id,
+      taker_user_id: alice._id,
+      status: 'Active',
+    },
+    {
+      task_id: tAliceTakerFinal._id,
+      credit: 12,
+      owner_user_id: chen._id,
+      taker_user_id: alice._id,
+      status: 'Active',
+    },
+    {
+      task_id: tAliceOwnerDone._id,
+      credit: 28,
+      owner_user_id: alice._id,
+      taker_user_id: dana._id,
+      status: 'Active',
+    },
   ]);
 
   await Comment.insertMany([
@@ -225,9 +300,24 @@ async function main() {
       user_id: dana._id,
       comment: 'Staging URL in README; health check returns 200.',
     },
+    {
+      task_id: tAliceTakerProgress._id,
+      user_id: alice._id,
+      comment: 'Halfway through the chapter — will add margin notes by Tuesday.',
+    },
+    {
+      task_id: tAliceTakerDone._id,
+      user_id: alice._id,
+      comment: 'Release notes v1.0 sent for your review.',
+    },
+    {
+      task_id: tAliceOwnerDone._id,
+      user_id: dana._id,
+      comment: 'PDF bookmarks fixed; fonts embedded for print.',
+    },
   ]);
 
-  console.log('Seed: inserted 6 users (incl. Admin), 7 tasks, 6 transactions, 7 comments.');
+  console.log('Seed: inserted 6 users (incl. Admin), 12 tasks, 10 transactions, 10 comments.');
   console.log(`Seed: demo users — alice@example.com … eve@example.com · password: ${DEMO_PASSWORD}`);
   console.log('Seed: admin — admin@example.com · password: admin');
   await mongoose.disconnect();

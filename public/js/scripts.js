@@ -6,6 +6,7 @@
  * Session cookie (express-session) requires fetch(..., { credentials: 'same-origin' }) — see postJson.
  */
 const STORAGE_KEY = 'taskMarketplaceUser';
+const RETURN_URL_KEY = 'taskMarketplaceReturnUrl';
 
 function getStoredUser() {
   try {
@@ -36,6 +37,8 @@ function getEls() {
     btnSignout: document.getElementById('btn-signout-header'),
     heroCtaSignup: document.getElementById('hero-cta-signup'),
     heroCtaSignin: document.getElementById('hero-cta-signin'),
+    heroCtaBrowse: document.getElementById('hero-cta-browse'),
+    linkTasks: document.getElementById('link-tasks'),
   };
 }
 
@@ -49,8 +52,28 @@ function closeModal(dialog) {
   dialog.close();
 }
 
+function navigateAfterAuth(defaultPath) {
+  let next = null;
+  try {
+    const stored = sessionStorage.getItem(RETURN_URL_KEY);
+    if (stored && typeof stored === 'string' && stored.startsWith('/')) {
+      sessionStorage.removeItem(RETURN_URL_KEY);
+      next = stored;
+    }
+  } catch (_) {
+    /* ignore */
+  }
+  if (next) {
+    window.location.assign(next);
+    return;
+  }
+  if (defaultPath) {
+    window.location.assign(defaultPath);
+  }
+}
+
 function updateHeaderAuth() {
-  const { headerGuest, headerUser, headerUserMeta } = getEls();
+  const { headerGuest, headerUser, headerUserMeta, heroCtaSignup, heroCtaSignin, heroCtaBrowse } = getEls();
   const user = getStoredUser();
   const heroActions = document.getElementById('hero-actions');
 
@@ -62,11 +85,17 @@ function updateHeaderAuth() {
     if (headerUserMeta) {
       headerUserMeta.textContent = `${user.email} · ${user.credit_balance} credits`;
     }
-    heroActions?.classList.add('hidden');
+    heroActions?.classList.remove('hidden');
+    heroCtaSignup?.classList.add('hidden');
+    heroCtaSignin?.classList.add('hidden');
+    heroCtaBrowse?.classList.remove('hidden');
   } else {
     headerGuest.classList.remove('hidden');
     headerUser.classList.add('hidden');
     heroActions?.classList.remove('hidden');
+    heroCtaSignup?.classList.remove('hidden');
+    heroCtaSignin?.classList.remove('hidden');
+    heroCtaBrowse?.classList.remove('hidden');
   }
 }
 
@@ -130,10 +159,29 @@ function initForms() {
     queueMicrotask(() => first?.focus());
   };
 
+  const goBrowseOpenTasks = () => {
+    if (getStoredUser()) {
+      window.location.assign('/tasks.html');
+      return;
+    }
+    try {
+      sessionStorage.setItem(RETURN_URL_KEY, '/tasks.html');
+    } catch (_) {
+      /* ignore */
+    }
+    openSignin();
+  };
+
   els.btnOpenSignup?.addEventListener('click', openSignup);
   els.btnOpenSignin?.addEventListener('click', openSignin);
   els.heroCtaSignup?.addEventListener('click', openSignup);
   els.heroCtaSignin?.addEventListener('click', openSignin);
+  els.heroCtaBrowse?.addEventListener('click', goBrowseOpenTasks);
+  els.linkTasks?.addEventListener('click', (e) => {
+    if (getStoredUser()) return;
+    e.preventDefault();
+    goBrowseOpenTasks();
+  });
 
   els.btnSignout?.addEventListener('click', async () => {
     try {
@@ -173,7 +221,10 @@ function initForms() {
       updateHeaderAuth();
       showMsg(signupMsg, data.message || 'Account created.', true);
       formSignup.reset();
-      setTimeout(() => closeModal(els.modalSignup), 600);
+      setTimeout(() => {
+        closeModal(els.modalSignup);
+        navigateAfterAuth(null);
+      }, 600);
     } else {
       showMsg(signupMsg, data.message || 'Could not sign up.', false);
     }
@@ -206,7 +257,7 @@ function initForms() {
           type: 'ok',
           message: data.message || 'Signed in successfully.',
         });
-        window.location.assign('/profile.html');
+        navigateAfterAuth('/profile.html');
       }, 500);
     } else {
       const msg = data.message || 'Could not sign in.';
@@ -215,8 +266,34 @@ function initForms() {
   });
 }
 
+globalThis.TaskMarketplaceSession = {
+  getStoredUser,
+  setStoredUser,
+  updateHeaderAuth,
+};
+
 initForms();
 updateHeaderAuth();
-if (!document.getElementById('profile-page')) {
+if (!document.getElementById('profile-page') && !document.getElementById('tasks-page')) {
   globalThis.TaskMarketplaceFlash?.consume();
 }
+
+(function maybeOpenSigninForReturnUrl() {
+  if (document.getElementById('tasks-page')) return;
+  if (getStoredUser()) return;
+  let pending = null;
+  try {
+    pending = sessionStorage.getItem(RETURN_URL_KEY);
+  } catch (_) {
+    return;
+  }
+  if (!pending) return;
+  const { modalSignin } = getEls();
+  const signinMsg = document.getElementById('signin-msg');
+  if (modalSignin && typeof modalSignin.showModal === 'function') {
+    showMsg(signinMsg, 'Sign in to continue to Tasks.', false);
+    openModal(modalSignin);
+    const first = document.getElementById('form-signin')?.querySelector('input');
+    queueMicrotask(() => first?.focus());
+  }
+})();

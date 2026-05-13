@@ -105,6 +105,8 @@ describe('GET /api/tasks/browse', () => {
 
     const res = await agent.get('/api/tasks/browse').expect(200);
     expect(res.body.statusCode).toBe(200);
+    expect(res.body.meta).toBeDefined();
+    expect(res.body.meta.myPostedOpenCount).toBe(1);
     expect(res.body.openForMe).toHaveLength(1);
     expect(res.body.openForMe[0].title).toBe('Open for me');
     expect(res.body.openForMe[0].owner).toMatchObject({

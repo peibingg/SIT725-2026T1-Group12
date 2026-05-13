@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My profile — Task Marketplace</title>
+    <title>Browse tasks — Task Marketplace</title>
     <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
@@ -17,8 +17,8 @@
           <button type="button" id="btn-open-signin" class="btn btn-header btn-primary">Sign in</button>
         </div>
         <div id="header-user" class="header-user hidden">
-          <a class="header-link" href="/tasks.html" id="link-tasks">Tasks</a>
-          <a class="header-link" href="/profile.html" id="link-profile" aria-current="page">Profile</a>
+          <a class="header-link" href="/tasks.html" id="link-tasks" aria-current="page">Tasks</a>
+          <a class="header-link" href="/profile.html" id="link-profile">Profile</a>
           <span id="header-user-meta" class="header-user-meta"></span>
           <button type="button" id="btn-signout-header" class="btn btn-header btn-ghost">Sign out</button>
         </div>
@@ -27,51 +27,59 @@
 
     <div id="site-flash" class="site-flash hidden" role="status" aria-live="polite"></div>
 
-    <main id="profile-page" class="profile-page">
-      <div class="profile-inner">
-        <header class="profile-intro">
-          <h1 class="profile-title">My account</h1>
-          <p class="profile-lead">Your balance is loaded from the server whenever you open or refresh this page.</p>
-          <p class="profile-tasks-hint">
-            <a class="header-link profile-tasks-link" href="/tasks.html">Browse tasks</a>
-            <span class="profile-tasks-hint-text"> — claim open work or finish tasks you are assigned.</span>
-          </p>
-          <button type="button" id="btn-profile-refresh" class="btn btn-ghost btn-profile-refresh">Refresh balance</button>
+    <main id="tasks-page" class="tasks-page">
+      <div class="tasks-inner">
+        <header class="tasks-intro">
+          <h1 class="tasks-title">Browse tasks</h1>
+          <p class="tasks-lead">Take open work you can do, or finish tasks you have already claimed.</p>
+          <button type="button" id="btn-tasks-refresh" class="btn btn-ghost btn-tasks-refresh">Refresh lists</button>
         </header>
 
-        <section class="profile-balance-card" aria-labelledby="balance-heading">
-          <h2 id="balance-heading" class="visually-hidden">Credit balance</h2>
-          <p class="profile-balance-label">Available credits</p>
-          <p id="profile-credit-balance" class="profile-credit-value" aria-live="polite">—</p>
-          <dl class="profile-identity" id="profile-identity">
-            <div><dt>Name</dt><dd id="profile-name">—</dd></div>
-            <div><dt>Email</dt><dd id="profile-email">—</dd></div>
-            <div><dt>Role</dt><dd id="profile-role">—</dd></div>
-          </dl>
+        <p id="tasks-load-msg" class="form-msg tasks-load-msg" role="status" aria-live="polite"></p>
+
+        <section class="tasks-section" aria-labelledby="open-heading">
+          <h2 id="open-heading" class="tasks-section-title">Open for you</h2>
+          <p class="tasks-section-lead">Tasks you can claim (not owned by you, no taker yet).</p>
+          <div id="tasks-open-empty" class="tasks-empty hidden" role="status">No open tasks right now. Check back later.</div>
+          <div class="tasks-table-wrap">
+            <table class="tasks-table" id="tasks-open-table" aria-label="Open tasks">
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Owner</th>
+                  <th scope="col">Credits</th>
+                  <th scope="col">Taker</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tasks-open-body"></tbody>
+            </table>
+          </div>
         </section>
 
-        <section class="profile-password-card" aria-labelledby="password-heading">
-          <h2 id="password-heading" class="profile-section-title">Change password</h2>
-          <p class="profile-section-lead">Use a strong password. The server validates and stores it securely.</p>
-          <form id="form-change-password" class="auth-form" novalidate autocomplete="off">
-            <label>
-              Current password
-              <input type="password" name="current_password" autocomplete="current-password" required />
-            </label>
-            <label>
-              New password
-              <input type="password" name="new_password" autocomplete="new-password" minlength="6" required />
-            </label>
-            <label>
-              Confirm new password
-              <input type="password" name="confirm_password" autocomplete="new-password" minlength="6" required />
-            </label>
-            <button type="submit" class="btn btn-submit">Update password</button>
-          </form>
-          <p id="profile-password-msg" class="form-msg" role="status"></p>
+        <section class="tasks-section" aria-labelledby="mine-heading">
+          <h2 id="mine-heading" class="tasks-section-title">Your tasks as taker</h2>
+          <p class="tasks-section-lead">In progress, completed, or finalised work where you are the taker.</p>
+          <div id="tasks-mine-empty" class="tasks-empty hidden" role="status">You have no tasks as taker yet. Claim one from the list above.</div>
+          <div class="tasks-table-wrap">
+            <table class="tasks-table" id="tasks-mine-table" aria-label="Your tasks as taker">
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Owner</th>
+                  <th scope="col">Credits</th>
+                  <th scope="col">Taker</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tasks-mine-body"></tbody>
+            </table>
+          </div>
         </section>
-
-        <p id="profile-load-msg" class="form-msg profile-load-msg" role="status"></p>
       </div>
     </main>
 
@@ -130,6 +138,7 @@
     <script src="/js/authValidation.js"></script>
     <script src="/js/flash.js"></script>
     <script src="/js/scripts.js"></script>
-    <script src="/js/profile.js"></script>
+    <script src="/js/tasksUi.js"></script>
+    <script src="/js/tasks.js"></script>
   </body>
 </html>
