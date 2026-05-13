@@ -147,7 +147,11 @@ Base URL: `http://localhost:<PORT>` (default port **3000**).
 | POST | `/api/tasks/:id/take` | **Session required.** Atomically claims an **Open** task with no taker if you are not the owner → **In Progress** and you become taker. **409** if already claimed or wrong state; **403** if you own the task; **404** if missing. |
 | POST | `/api/tasks/:id/complete` | **Session required.** Taker only: **In Progress** → **Completed**. **403** if not the assigned taker; **409** if not in progress; **404** if missing. |
 | POST | `/api/tasks/:id/approve` | **Session required.** **Owner only:** **Completed** → **Finalised** and atomically transfers **`task.credit`** from owner to taker (MongoDB transaction). Rejects if owner **credit_balance** \< task credit (**400**), if a **Payout** already exists (**409**), or if caller is not the owner (**403**). |
+| GET | `/api/tasks/:taskId/comments` | **Session required.** **Owner or assigned taker** may list progress comments for that task. Returns `{ comments }` with items `{ id, user_id, comment, created, user? }` sorted by **`created`** ascending. **`user`** is populated with `first_name`, `last_name`, `email` (no `password_hash`). **403** if neither owner nor taker; **404** if task missing; **400** if `taskId` is not a valid ObjectId. |
+| POST | `/api/tasks/:taskId/comments` | **Session required.** **Assigned taker only**, and only while status is **In Progress**. JSON body: **`comment`** (required, trimmed, non-empty, max **10 000** characters). **201** on success. **403** if wrong role or wrong status; **400** if validation fails; **404** if task missing. |
 | GET | `/api/credits/ping` | Credits router smoke test. |
+
+**Logical `task_comments`:** Progress notes are persisted in the MongoDB **`comments`** collection via the **`Comment`** model (`task_id`, `user_id`, `comment`, `created`).
 
 The static site (`public/index.html`) uses the auth endpoints from the browser.
 
@@ -158,7 +162,7 @@ The static site (`public/index.html`) uses the auth endpoints from the browser.
 | Path | Role |
 |------|------|
 | `server.js` | Express app, MongoDB connect, routes, `listen`. |
-| `models/` | Mongoose schemas. |
+| `models/` | Mongoose schemas (including **`comment.model.js`** for logical **task_comments** → `comments` collection). |
 | `controllers/` | Route handlers (thin; task status mutations delegate to `services/taskStatus.service.js`). |
 | `services/` | Server-side domain logic (e.g. task status transitions + approve payout). |
 | `routes/` | Express routers mounted under `/api`. |

@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/user.model');
 const Task = require('../models/task.model');
 const Transaction = require('../models/transaction.model');
+const Comment = require('../models/comment.model');
 
 let app;
 let mongoReplSet;
@@ -32,6 +33,7 @@ beforeEach(async () => {
   await User.deleteMany({});
   await Task.deleteMany({});
   await Transaction.deleteMany({});
+  await Comment.deleteMany({});
 });
 
 async function signup(agent, email, name = 'T') {
@@ -532,5 +534,174 @@ describe('POST /api/tasks/:id/approve', () => {
     expect(codes).toEqual([200, 409]);
     const payoutCount = await Transaction.countDocuments({ task_id: task._id, purpose: 'Payout', status: 'Active' });
     expect(payoutCount).toBe(1);
+  });
+});
+
+describe('Task comments (logical task_comments → comments collection)', () => {
+  it('returns 401 without session for GET and POST', async () => {
+    const id = new mongoose.Types.ObjectId();
+    await request(app).get(`/api/tasks/${id}/comments`).expect(401);
+    await request(app).post(`/api/tasks/${id}/comments`).send({ comment: 'x' }).expect(401);
+  });
+
+  it('returns 400 for invalid task id', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'cmt-bad@example.com', 'C');
+    await agent.get('/api/tasks/not-an-id/comments').expect(400);
+    await agent.post('/api/tasks/not-an-id/comments').send({ comment: 'x' }).expect(400);
+  });
+
+  it('taker posts on In Progress → 201; owner GET lists comment sorted ascending', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'cmt-o@example.com', 'CO');
+    await signup(takerAgent, 'cmt-t@example.com', 'CT');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'With comments',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 5,
+      status: 'In Progress',
+    });
+
+    const post1 = await takerAgent
+      .post(`/api/tasks/${task._id}/comments`)
+      .send({ comment: '  First update  ' })
+      .expect(201);
+    expect(post1.body.comment.comment).toBe('First update');
+    expect(post1.body.comment.user_id).toBe(takerMe.body.user.id);
+    expect(post1.body.comment).toHaveProperty('created');
+    expect(post1.body.comment.user).toMatchObject({
+      first_name: 'CT',
+      email: 'cmt-t@example.com',
+    });
+    expect(post1.body.comment.user).not.toHaveProperty('password_hash');
+
+    await takerAgent.post(`/api/tasks/${task._id}/comments`).send({ comment: 'Second line' }).expect(201);
+
+    const list = await ownerAgent.get(`/api/tasks/${task._id}/comments`).expect(200);
+    expect(list.body.comments).toHaveLength(2);
+    expect(list.body.comments[0].comment).toBe('First update');
+    expect(list.body.comments[1].comment).toBe('Second line');
+    const t0 = new Date(list.body.comments[0].created).getTime();
+    const t1 = new Date(list.body.comments[1].created).getTime();
+    expect(t1).toBeGreaterThanOrEqual(t0);
+  });
+
+  it('stranger GET and POST return 403', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    const stranger = request.agent(app);
+    await signup(ownerAgent, 'cmt2-o@example.com', 'C2O');
+    await signup(takerAgent, 'cmt2-t@example.com', 'C2T');
+    await signup(stranger, 'cmt2-x@example.com', 'C2X');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'Private',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 3,
+      status: 'In Progress',
+    });
+
+    await stranger.get(`/api/tasks/${task._id}/comments`).expect(403);
+    await stranger.post(`/api/tasks/${task._id}/comments`).send({ comment: 'hack' }).expect(403);
+  });
+
+  it('owner cannot POST comment (403)', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'cmt3-o@example.com', 'C3O');
+    await signup(takerAgent, 'cmt3-t@example.com', 'C3T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'Owner no post',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 2,
+      status: 'In Progress',
+    });
+
+    await ownerAgent.post(`/api/tasks/${task._id}/comments`).send({ comment: 'from owner' }).expect(403);
+  });
+
+  it('POST on Open task returns 403', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'cmt4-o@example.com', 'C4O');
+    await signup(takerAgent, 'cmt4-t@example.com', 'C4T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'Open only',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 2,
+      status: 'Open',
+    });
+
+    await takerAgent.post(`/api/tasks/${task._id}/comments`).send({ comment: 'nope' }).expect(403);
+  });
+
+  it('empty or missing comment returns 400', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'cmt5-o@example.com', 'C5O');
+    await signup(takerAgent, 'cmt5-t@example.com', 'C5T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'Val',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 1,
+      status: 'In Progress',
+    });
+
+    await takerAgent.post(`/api/tasks/${task._id}/comments`).send({ comment: '   ' }).expect(400);
+    await takerAgent.post(`/api/tasks/${task._id}/comments`).send({}).expect(400);
+  });
+
+  it('comment over max length returns 400', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'cmt6-o@example.com', 'C6O');
+    await signup(takerAgent, 'cmt6-t@example.com', 'C6T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'Long',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 1,
+      status: 'In Progress',
+    });
+
+    const tooLong = 'a'.repeat(10001);
+    await takerAgent.post(`/api/tasks/${task._id}/comments`).send({ comment: tooLong }).expect(400);
+  });
+
+  it('GET and POST for missing task return 404', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'cmt7@example.com', 'C7');
+    const missing = new mongoose.Types.ObjectId();
+    await agent.get(`/api/tasks/${missing}/comments`).expect(404);
+    await agent.post(`/api/tasks/${missing}/comments`).send({ comment: 'x' }).expect(404);
   });
 });
