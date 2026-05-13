@@ -47,7 +47,7 @@ const browse = async (req, res) => {
   try {
     const userId = parseUserId(req);
 
-    const [openForMe, myAsTaker, myPostedOpenCount] = await Promise.all([
+    const [openForMe, myAsTaker, myAsOwner, myPostedOpenCount] = await Promise.all([
       Task.find({
         status: 'Open',
         taker_user_id: null,
@@ -58,6 +58,13 @@ const browse = async (req, res) => {
         .populate('taker_user_id', USER_POPULATE_SELECT),
       Task.find({
         taker_user_id: userId,
+        status: { $in: ['In Progress', 'Completed', 'Finalised'] },
+      })
+        .sort({ created: -1 })
+        .populate('owner_user_id', USER_POPULATE_SELECT)
+        .populate('taker_user_id', USER_POPULATE_SELECT),
+      Task.find({
+        owner_user_id: userId,
         status: { $in: ['In Progress', 'Completed', 'Finalised'] },
       })
         .sort({ created: -1 })
@@ -74,6 +81,7 @@ const browse = async (req, res) => {
       statusCode: 200,
       openForMe: openForMe.map((t) => serializeTask(t)),
       myAsTaker: myAsTaker.map((t) => serializeTask(t)),
+      myAsOwner: myAsOwner.map((t) => serializeTask(t)),
       meta: {
         myPostedOpenCount: myPostedOpenCount,
       },

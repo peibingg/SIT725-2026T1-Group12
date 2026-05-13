@@ -123,6 +123,8 @@ From the repo root (after `npm install`):
 | **API integration** (Express + Supertest + in-memory Mongo) | `npm test -- tests/auth.integration.test.js` · `npm test -- tests/task.integration.test.js` |
 | **Unit** (auth client validation vs backend rules) | `npm test -- tests/authValidation.unit.test.js` |
 | **DOM** (jsdom; e.g. sign-in error UI with mocked `fetch`) | `npm test -- tests/signin.dom.test.js` |
+| **Tasks + comments DOM** (browse / take / mocked comment GET+POST) | `npm test -- tests/tasksPage.dom.test.js` · `npm test -- tests/taskComments.dom.test.js` |
+| **Task comments helpers (unit)** | `npm test -- tests/taskCommentsUi.unit.test.js` |
 
 **Watch one file** (optional):
 
@@ -143,7 +145,7 @@ Base URL: `http://localhost:<PORT>` (default port **3000**).
 | POST | `/api/auth/signup` | Register (JSON: `first_name`, `last_name`, `email`, `password`). Passwords are **bcrypt-hashed**; response omits `password_hash`. |
 | POST | `/api/auth/signin` | Sign in with `email` / `password`. Returns JSON `user` (client may store in `sessionStorage` for the current UI). |
 | GET | `/api/tasks/ping` | Tasks router smoke test. |
-| GET | `/api/tasks/browse` | **Session required.** Returns `{ openForMe, myAsTaker, meta }`: takeable **Open** tasks (no taker, **not owned by you** — your own open listings are excluded) and tasks where you are **taker** with status **In Progress**, **Completed**, or **Finalised**. `meta.myPostedOpenCount` counts your own open tasks (for empty-state hints). Each task includes `owner` / `taker` as `{ id, first_name, last_name, email }` (no `password_hash`). |
+| GET | `/api/tasks/browse` | **Session required.** Returns `{ openForMe, myAsTaker, myAsOwner, meta }`: takeable **Open** tasks (no taker, **not owned by you** — your own open listings are excluded); tasks where you are **taker** with status **In Progress**, **Completed**, or **Finalised**; and tasks you **own** with status **In Progress**, **Completed**, or **Finalised** (so you can open the **Progress** thread on the Tasks page). `meta.myPostedOpenCount` counts your own open tasks (for empty-state hints). Each task includes `owner` / `taker` as `{ id, first_name, last_name, email }` (no `password_hash`). |
 | POST | `/api/tasks/:id/take` | **Session required.** Atomically claims an **Open** task with no taker if you are not the owner → **In Progress** and you become taker. **409** if already claimed or wrong state; **403** if you own the task; **404** if missing. |
 | POST | `/api/tasks/:id/complete` | **Session required.** Taker only: **In Progress** → **Completed**. **403** if not the assigned taker; **409** if not in progress; **404** if missing. |
 | POST | `/api/tasks/:id/approve` | **Session required.** **Owner only:** **Completed** → **Finalised** and atomically transfers **`task.credit`** from owner to taker (MongoDB transaction). Rejects if owner **credit_balance** \< task credit (**400**), if a **Payout** already exists (**409**), or if caller is not the owner (**403**). |

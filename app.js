@@ -25,7 +25,6 @@ app.use(
     },
   })
 );
-app.use(express.static(path.join(__dirname, 'public')));
 
 require('./models/user.model');
 require('./models/task.model');
@@ -43,5 +42,8 @@ app.use('/api/credits', creditRouter);
 app.get('/api/health', (req, res) => {
   res.json({ statusCode: 200, message: 'Task Marketplace API', mongoose: mongoose.connection.readyState === 1 });
 });
+
+/** After API routes so /api/... is never shadowed by a future file under public/. */
+app.use(express.static(path.join(__dirname, 'public')));
 
 module.exports = app;

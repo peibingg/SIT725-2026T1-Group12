@@ -819,6 +819,103 @@ body {
   white-space: nowrap;
 }
 
+.tasks-progress-cell {
+  white-space: nowrap;
+}
+
+.btn-task-comments {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.tasks-comments-expand-cell {
+  background: rgba(42, 157, 143, 0.06);
+  border-bottom: 1px solid var(--border);
+}
+
+.tasks-comments-panel {
+  padding: 0.75rem 0.5rem 1rem;
+  max-width: 100%;
+}
+
+.tasks-comments-panel-status,
+.tasks-comments-panel-err,
+.tasks-comments-post-err {
+  margin: 0 0 0.5rem;
+  min-height: 0;
+}
+
+.tasks-comments-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  max-width: 56ch;
+}
+
+.tasks-comments-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.tasks-comment-item {
+  padding: 0.55rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.tasks-comment-item:last-child {
+  border-bottom: none;
+}
+
+.tasks-comment-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.tasks-comment-author {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tasks-comment-body {
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.tasks-comments-form.hidden {
+  display: none;
+}
+
+.tasks-comments-hint.hidden {
+  display: none;
+}
+
+.tasks-comments-textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.35rem;
+  padding: 0.5rem;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  min-height: 4rem;
+}
+
+.tasks-comments-form-actions {
+  margin-top: 0.35rem;
+}
+
+.btn-comments-submit {
+  font-size: 0.85rem;
+}
+
 @media (max-width: 720px) {
   .tasks-desc-cell {
     max-width: 140px;

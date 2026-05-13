@@ -21,6 +21,7 @@ function loadTasksPageShell() {
 function clearTasksCaches() {
   jest.resetModules();
   delete require.cache[path.join(__dirname, '../public/js/tasksUi.js')];
+  delete require.cache[path.join(__dirname, '../public/js/taskCommentsUi.js')];
   delete require.cache[path.join(__dirname, '../public/js/tasks.js')];
 }
 
@@ -70,7 +71,7 @@ describe('Tasks page (DOM)', () => {
     globalThis.fetch = jest
       .fn()
       .mockResolvedValueOnce(
-        jsonRes(true, 200, { statusCode: 200, openForMe: [openTask], myAsTaker: [] }),
+        jsonRes(true, 200, { statusCode: 200, openForMe: [openTask], myAsTaker: [], myAsOwner: [] }),
       )
       .mockResolvedValueOnce(
         jsonRes(true, 200, {
@@ -80,10 +81,11 @@ describe('Tasks page (DOM)', () => {
         }),
       )
       .mockResolvedValueOnce(
-        jsonRes(true, 200, { statusCode: 200, openForMe: [], myAsTaker: [inProgressTask] }),
+        jsonRes(true, 200, { statusCode: 200, openForMe: [], myAsTaker: [inProgressTask], myAsOwner: [] }),
       );
 
     require('../public/js/tasksUi.js');
+    require('../public/js/taskCommentsUi.js');
     require('../public/js/tasks.js');
 
     await new Promise((r) => setTimeout(r, 40));
@@ -131,16 +133,17 @@ describe('Tasks page (DOM)', () => {
     globalThis.fetch = jest
       .fn()
       .mockResolvedValueOnce(
-        jsonRes(true, 200, { statusCode: 200, openForMe: [openTask], myAsTaker: [] }),
+        jsonRes(true, 200, { statusCode: 200, openForMe: [openTask], myAsTaker: [], myAsOwner: [] }),
       )
       .mockResolvedValueOnce(
         jsonRes(false, 409, { statusCode: 409, message: 'Task is not available to claim' }),
       )
       .mockResolvedValueOnce(
-        jsonRes(true, 200, { statusCode: 200, openForMe: [], myAsTaker: [] }),
+        jsonRes(true, 200, { statusCode: 200, openForMe: [], myAsTaker: [], myAsOwner: [] }),
       );
 
     require('../public/js/tasksUi.js');
+    require('../public/js/taskCommentsUi.js');
     require('../public/js/tasks.js');
 
     await new Promise((r) => setTimeout(r, 40));

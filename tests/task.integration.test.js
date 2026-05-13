@@ -108,6 +108,14 @@ describe('GET /api/tasks/browse', () => {
         credit: 8,
         status: 'Finalised',
       },
+      {
+        title: 'I own with taker',
+        description: 'owner view',
+        owner_user_id: new mongoose.Types.ObjectId(myId),
+        taker_user_id: other._id,
+        credit: 3,
+        status: 'In Progress',
+      },
     ]);
 
     const res = await agent.get('/api/tasks/browse').expect(200);
@@ -127,6 +135,14 @@ describe('GET /api/tasks/browse', () => {
 
     const mine = res.body.myAsTaker.map((t) => t.title).sort();
     expect(mine).toEqual(['Done as taker', 'Finalised read-only', 'I am taker in progress'].sort());
+
+    expect(res.body.myAsOwner).toHaveLength(1);
+    expect(res.body.myAsOwner[0].title).toBe('I own with taker');
+    expect(res.body.myAsOwner[0].taker).toMatchObject({
+      first_name: 'Other',
+      last_name: 'Owner',
+      email: 'other@example.com',
+    });
   });
 });
 
