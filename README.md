@@ -66,11 +66,17 @@ Load **sample users, tasks, transactions, and comments** (useful for development
 npm run seed
 ```
 
-**Behaviour (idempotent):** If the **`users`** collection already has at least one document, the script **prints a skip message and exits** without inserting duplicates. To run a **full re-seed**:
+**Behaviour (idempotent):** If the **`users`** collection already has at least one document, the script **prints a skip message and exits** without inserting duplicates (you will see: `Seed: skipped — database already has users`).
 
-1. Stop the app if it holds connections.
-2. Drop the database or clear collections (e.g. MongoDB Compass, `mongosh`, or `db.dropDatabase()` on a disposable DB).
-3. Run `npm run seed` again.
+**Quick full re-seed on local MongoDB (dev only):** stop `npm start`, then:
+
+```bash
+npm run seed:reset
+```
+
+That **drops the whole database** pointed to by `MONGODB_URI` and runs `seed.js`. Do **not** use this against production or shared Atlas clusters.
+
+**Manual re-seed:** drop the database or clear collections (Compass, `mongosh`, etc.), then run `npm run seed` again.
 
 **Demo accounts** (after a successful seed; **local/demo only**):
 
@@ -102,6 +108,7 @@ Source of truth: `models/*.model.js`.
 |--------|---------|-------------|
 | `start` | `npm start` | Runs `node server.js` — Express API + static `public/`. |
 | `seed` | `npm run seed` | Runs `node seed.js` — inserts sample data if DB has no users. |
+| `seed:reset` | `npm run seed:reset` | **Local dev only:** drops the DB from `MONGODB_URI`, then runs `seed.js` (use when `npm run seed` is skipped). |
 | `test` | `npm test` | Runs **Jest** (`NODE_ENV=test`, in-band): API integration, client validator unit tests, and DOM/jsdom tests. No separate E2E runner. |
 
 ---
@@ -136,7 +143,7 @@ Base URL: `http://localhost:<PORT>` (default port **3000**).
 | POST | `/api/auth/signup` | Register (JSON: `first_name`, `last_name`, `email`, `password`). Passwords are **bcrypt-hashed**; response omits `password_hash`. |
 | POST | `/api/auth/signin` | Sign in with `email` / `password`. Returns JSON `user` (client may store in `sessionStorage` for the current UI). |
 | GET | `/api/tasks/ping` | Tasks router smoke test. |
-| GET | `/api/tasks/browse` | **Session required.** Returns `{ openForMe, myAsTaker }`: takeable **Open** tasks (no taker, not owned by you) and tasks where you are **taker** with status **In Progress**, **Completed**, or **Finalised**. Each task includes `owner` / `taker` as `{ id, first_name, last_name, email }` (no `password_hash`). |
+| GET | `/api/tasks/browse` | **Session required.** Returns `{ openForMe, myAsTaker, meta }`: takeable **Open** tasks (no taker, **not owned by you** — your own open listings are excluded) and tasks where you are **taker** with status **In Progress**, **Completed**, or **Finalised**. `meta.myPostedOpenCount` counts your own open tasks (for empty-state hints). Each task includes `owner` / `taker` as `{ id, first_name, last_name, email }` (no `password_hash`). |
 | POST | `/api/tasks/:id/take` | **Session required.** Atomically claims an **Open** task with no taker if you are not the owner → **In Progress** and you become taker. **409** if already claimed or wrong state; **403** if you own the task; **404** if missing. |
 | POST | `/api/tasks/:id/complete` | **Session required.** Taker only: **In Progress** → **Completed**. **403** if not the assigned taker; **409** if not in progress; **404** if missing. |
 | GET | `/api/credits/ping` | Credits router smoke test. |
@@ -162,7 +169,7 @@ The static site (`public/index.html`) uses the auth endpoints from the browser.
 ## Troubleshooting
 
 - **“MongoDB connection error” on start** — MongoDB is not running or `MONGODB_URI` is wrong. Start `mongod` locally or fix the URI (Atlas IP allowlist, user/password in URI).
-- **`npm run seed` says skipped** — There is already at least one user in the DB. Drop/clear data or use a fresh database name in `MONGODB_URI`, then run `npm run seed` again.
+- **`/tasks.html` lists are empty for Alice** — The **Open for you** list only shows **other people’s** open tasks (you cannot claim your own). **Your tasks as taker** only lists work where **you are the assigned taker**. If your database only has tasks you own, or none where you are taker, both lists can be empty even though tasks exist. For the full demo dataset, use **`npm run seed:reset`** (local only) or **`npm run seed`** on an empty database, or sign in as **ben@example.com** / **eve@example.com** (demo users) to see mixed data, or add tasks owned by another user with status **Open** and no taker.
 - **Port already in use (`EADDRINUSE`)** — Another process uses port 3000. Stop it or run `PORT=3001 npm start` (and open `http://localhost:3001`).
 - **Sign-in works but refresh “forgets” state** — The UI stores the signed-in user in **`sessionStorage`**; that is per-tab and cleared when the session/tab ends. Server-side sessions can be added later with `express-session` + cookie `credentials` in `fetch`.
 

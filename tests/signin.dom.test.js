@@ -115,4 +115,40 @@ describe('sign-in UI (DOM)', () => {
     expect(assign).toHaveBeenCalledWith('/profile.html');
     expect(sessionStorage.getItem('taskMarketplaceFlash')).toBeTruthy();
   });
+
+  it('redirects to tasks when taskMarketplaceReturnUrl is set', async () => {
+    sessionStorage.setItem('taskMarketplaceReturnUrl', '/tasks.html');
+    const assign = jest.fn();
+    delete window.location;
+    window.location = { assign, replace: jest.fn(), href: '' };
+
+    globalThis.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        statusCode: 200,
+        message: 'Signed in',
+        user: {
+          id: '1',
+          email: 'ok@example.com',
+          credit_balance: 0,
+          first_name: 'O',
+          last_name: 'K',
+          role: 'User',
+        },
+      }),
+    });
+
+    require('../public/js/authValidation.js');
+    require('../public/js/flash.js');
+    require('../public/js/scripts.js');
+
+    const form = document.getElementById('form-signin');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    await new Promise((r) => setTimeout(r, 600));
+
+    expect(assign).toHaveBeenCalledWith('/tasks.html');
+    expect(sessionStorage.getItem('taskMarketplaceReturnUrl')).toBeNull();
+  });
 });
