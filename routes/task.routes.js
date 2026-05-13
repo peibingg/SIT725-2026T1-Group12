@@ -7,6 +7,7 @@ const { requireAuth } = require('../middleware/requireAuth');
 
 router.get('/ping', taskController.ping);
 router.get('/browse', requireAuth, taskController.browse);
+router.post('/:id/approve', requireAuth, taskController.approveTask);
 router.post('/:id/take', requireAuth, taskController.takeTask);
 router.post('/:id/complete', requireAuth, taskController.completeTask);
 

@@ -95,7 +95,7 @@ Mongoose maps each **model** to a **collection** (default pluralised names: `use
 |--------------------|---------------------|
 | **User** | `_id`, `first_name`, `last_name`, `email` (unique), `password_hash` (not selected by default), `credit_balance`, `role` (`Admin` \| `User`), `created` |
 | **Task** | `_id`, `title`, `description`, `owner_user_id`, `taker_user_id` (optional), `credit`, `status` (`Open` \| `In Progress` \| `Completed` \| `Finalised`), `created` |
-| **Transaction** | `_id`, `task_id`, `credit`, `owner_user_id`, `taker_user_id`, `status` (`Active` \| `Deleted`), `created` |
+| **Transaction** | `_id`, `task_id`, `credit`, `owner_user_id`, `taker_user_id`, `status` (`Active` \| `Deleted`), optional **`purpose`** (`Payout` = final owner→taker transfer on approve; at most one **Active** payout per `task_id` via partial unique index), `created` |
 | **Comment** | `_id`, `task_id`, `comment`, `user_id`, `created` |
 
 Source of truth: `models/*.model.js`.
@@ -146,6 +146,7 @@ Base URL: `http://localhost:<PORT>` (default port **3000**).
 | GET | `/api/tasks/browse` | **Session required.** Returns `{ openForMe, myAsTaker, meta }`: takeable **Open** tasks (no taker, **not owned by you** — your own open listings are excluded) and tasks where you are **taker** with status **In Progress**, **Completed**, or **Finalised**. `meta.myPostedOpenCount` counts your own open tasks (for empty-state hints). Each task includes `owner` / `taker` as `{ id, first_name, last_name, email }` (no `password_hash`). |
 | POST | `/api/tasks/:id/take` | **Session required.** Atomically claims an **Open** task with no taker if you are not the owner → **In Progress** and you become taker. **409** if already claimed or wrong state; **403** if you own the task; **404** if missing. |
 | POST | `/api/tasks/:id/complete` | **Session required.** Taker only: **In Progress** → **Completed**. **403** if not the assigned taker; **409** if not in progress; **404** if missing. |
+| POST | `/api/tasks/:id/approve` | **Session required.** **Owner only:** **Completed** → **Finalised** and atomically transfers **`task.credit`** from owner to taker (MongoDB transaction). Rejects if owner **credit_balance** \< task credit (**400**), if a **Payout** already exists (**409**), or if caller is not the owner (**403**). |
 | GET | `/api/credits/ping` | Credits router smoke test. |
 
 The static site (`public/index.html`) uses the auth endpoints from the browser.
@@ -158,7 +159,8 @@ The static site (`public/index.html`) uses the auth endpoints from the browser.
 |------|------|
 | `server.js` | Express app, MongoDB connect, routes, `listen`. |
 | `models/` | Mongoose schemas. |
-| `controllers/` | Route handlers. |
+| `controllers/` | Route handlers (thin; task status mutations delegate to `services/taskStatus.service.js`). |
+| `services/` | Server-side domain logic (e.g. task status transitions + approve payout). |
 | `routes/` | Express routers mounted under `/api`. |
 | `public/` | Static UI (`index.html`, `css/`, `js/`). |
 | `seed.js` | Sample data loader. |
