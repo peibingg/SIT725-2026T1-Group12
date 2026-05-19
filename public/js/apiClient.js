@@ -33,9 +33,9 @@ async function apiPostJson(url, body) {
 
 const apiClient = { apiGet, apiPostJson };
 
-if (typeof globalThis !== 'undefined') {
-  globalThis.TaskMarketplaceApi = apiClient;
-}
+const apiRoot =
+  typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : {};
+apiRoot.TaskMarketplaceApi = apiClient;
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = apiClient;
 }

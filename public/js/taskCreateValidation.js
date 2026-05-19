@@ -1,8 +1,13 @@
 'use strict';
 
+function taskValidationRoot() {
+  if (typeof window !== 'undefined') return window;
+  if (typeof globalThis !== 'undefined') return globalThis;
+  return {};
+}
+
 const TASK_CREDIT_OPTIONS =
-  (typeof globalThis !== 'undefined' && globalThis.TaskMarketplaceTaskCredits?.TASK_CREDIT_OPTIONS) ||
-  [1, 3, 5, 8];
+  taskValidationRoot().TaskMarketplaceTaskCredits?.TASK_CREDIT_OPTIONS || [1, 3, 5, 8];
 
 const TITLE_MIN_LENGTH = 3;
 const TITLE_MAX_LENGTH = 200;
@@ -121,9 +126,8 @@ const taskCreateValidationApi = {
   validateCreateTaskForm,
 };
 
-if (typeof globalThis !== 'undefined') {
-  globalThis.TaskMarketplaceTaskCreateValidation = taskCreateValidationApi;
-}
+const validationRoot = taskValidationRoot();
+validationRoot.TaskMarketplaceTaskCreateValidation = taskCreateValidationApi;
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = taskCreateValidationApi;
 }

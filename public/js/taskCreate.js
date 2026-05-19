@@ -3,14 +3,136 @@
 /**
  * Create Task UI: GET /api/tasks/create-meta, POST /api/tasks (credentials: same-origin).
  */
-const CreateVal = () => globalThis.TaskMarketplaceTaskCreateValidation;
-const Api = () => globalThis.TaskMarketplaceApi;
-const Credits = () => globalThis.TaskMarketplaceTaskCredits;
+function appRoot() {
+  if (typeof window !== 'undefined') return window;
+  if (typeof globalThis !== 'undefined') return globalThis;
+  return {};
+}
+
+/** Registers validators on window if taskCreateValidation.js did not load (cache/adblock). */
+function ensureCreateValidationRegistered() {
+  const root = appRoot();
+  if (root.TaskMarketplaceTaskCreateValidation) {
+    return root.TaskMarketplaceTaskCreateValidation;
+  }
+
+  const TASK_CREDIT_OPTIONS =
+    (root.TaskMarketplaceTaskCredits && root.TaskMarketplaceTaskCredits.TASK_CREDIT_OPTIONS) ||
+    [1, 3, 5, 8];
+  const TITLE_MIN_LENGTH = 3;
+  const TITLE_MAX_LENGTH = 200;
+  const DESCRIPTION_MAX_LENGTH = 20000;
+
+  function trimTitle(title) {
+    return String(title == null ? '' : title).trim();
+  }
+  function trimDescription(description) {
+    return String(description == null ? '' : description).trim();
+  }
+  function validateTitle(title) {
+    const trimmed = trimTitle(title);
+    if (!trimmed) return { ok: false, message: 'Title is required', trimmed, length: 0 };
+    const length = trimmed.length;
+    if (length < TITLE_MIN_LENGTH || length > TITLE_MAX_LENGTH) {
+      return {
+        ok: false,
+        message: `Title must be between ${TITLE_MIN_LENGTH} and ${TITLE_MAX_LENGTH} characters`,
+        trimmed,
+        length,
+      };
+    }
+    return { ok: true, message: '', trimmed, length };
+  }
+  function validateDescription(description) {
+    const trimmed = trimDescription(description);
+    if (!trimmed) return { ok: false, message: 'Description is required', trimmed, length: 0 };
+    const length = trimmed.length;
+    if (length > DESCRIPTION_MAX_LENGTH) {
+      return {
+        ok: false,
+        message: `Description must be at most ${DESCRIPTION_MAX_LENGTH} characters`,
+        trimmed,
+        length,
+      };
+    }
+    return { ok: true, message: '', trimmed, length };
+  }
+  function validateCreditSelection(credit, creditBalance) {
+    const balance = Number(creditBalance) || 0;
+    if (balance <= 0) {
+      return { ok: false, message: 'You need a positive credit balance to create a task' };
+    }
+    if (credit === undefined || credit === null || credit === '') {
+      return { ok: false, message: 'Credit is required' };
+    }
+    const creditNum = Number(credit);
+    if (!Number.isInteger(creditNum)) {
+      return { ok: false, message: 'Credit must be a whole number' };
+    }
+    if (!TASK_CREDIT_OPTIONS.includes(creditNum)) {
+      return {
+        ok: false,
+        message: `Credit must be one of: ${TASK_CREDIT_OPTIONS.join(', ')}`,
+      };
+    }
+    if (creditNum > balance) {
+      return {
+        ok: false,
+        message: 'Credit cannot exceed your available credit balance',
+      };
+    }
+    return { ok: true, credit: creditNum, message: '' };
+  }
+  function validateCreateTaskForm({ title, description, credit, creditBalance }) {
+    const balance = Number(creditBalance) || 0;
+    if (balance <= 0) {
+      return { ok: false, message: 'You need a positive credit balance to create a task' };
+    }
+    const titleResult = validateTitle(title);
+    if (!titleResult.ok) return titleResult;
+    const descResult = validateDescription(description);
+    if (!descResult.ok) return descResult;
+    const creditResult = validateCreditSelection(credit, balance);
+    if (!creditResult.ok) return creditResult;
+    return {
+      ok: true,
+      message: '',
+      title: titleResult.trimmed,
+      description: descResult.trimmed,
+      credit: creditResult.credit,
+    };
+  }
+
+  const embedded = {
+    TASK_CREDIT_OPTIONS,
+    TITLE_MIN_LENGTH,
+    TITLE_MAX_LENGTH,
+    DESCRIPTION_MAX_LENGTH,
+    allowedCreditsForBalance(creditBalance) {
+      const balance = Number(creditBalance) || 0;
+      if (balance <= 0) return [];
+      return TASK_CREDIT_OPTIONS.filter((c) => c <= balance);
+    },
+    trimTitle,
+    trimDescription,
+    validateTitle,
+    validateDescription,
+    validateCreditSelection,
+    validateCreateTaskForm,
+  };
+
+  root.TaskMarketplaceTaskCreateValidation = embedded;
+  return embedded;
+}
+
+const CreateVal = ensureCreateValidationRegistered;
+const Api = () => appRoot().TaskMarketplaceApi;
+const Credits = () => appRoot().TaskMarketplaceTaskCredits;
 
 let createMeta = null;
 
 function getStoredUser() {
-  return globalThis.TaskMarketplaceSession?.getStoredUser?.() ?? null;
+  return appRoot().TaskMarketplaceSession?.getStoredUser?.() ?? null;
 }
 
 async function refreshStoredUserFromServer() {
@@ -18,8 +140,8 @@ async function refreshStoredUserFromServer() {
   if (!api) return;
   const { res, data } = await api.apiGet('/api/auth/me');
   if (res.ok && data.user) {
-    globalThis.TaskMarketplaceSession?.setStoredUser?.(data.user);
-    globalThis.TaskMarketplaceSession?.updateHeaderAuth?.();
+    appRoot().TaskMarketplaceSession?.setStoredUser?.(data.user);
+    appRoot().TaskMarketplaceSession?.updateHeaderAuth?.();
   }
 }
 
@@ -138,9 +260,6 @@ function updateCreditField() {
 
 function collectFormValidation() {
   const val = CreateVal();
-  if (!val) {
-    return { ok: false, message: 'Form validation is unavailable. Refresh the page.' };
-  }
   if (!createMeta?.canCreate) {
     return {
       ok: false,
@@ -243,11 +362,11 @@ function wireCreateForm() {
         renderCreditOptions();
         modal.close();
         form.reset();
-        globalThis.TaskMarketplaceFlash?.set({
+        appRoot().TaskMarketplaceFlash?.set({
           type: 'ok',
           message: `Task created: ${data.task.title}`,
         });
-        globalThis.TaskMarketplaceTaskCreate?.onTaskCreated?.(data.task);
+        appRoot().TaskMarketplaceTaskCreate?.onTaskCreated?.(data.task);
         return;
       }
 
@@ -297,7 +416,7 @@ async function loadPostedOpenTasks() {
   const empty = document.getElementById('tasks-posted-empty');
   const table = document.getElementById('tasks-posted-table');
   const api = Api();
-  const ui = globalThis.TaskMarketplaceTasksUi;
+  const ui = appRoot().TaskMarketplaceTasksUi;
   if (!tbody || !api) return;
 
   const { res, data } = await api.apiGet('/api/tasks?scope=owner');
@@ -345,9 +464,7 @@ const taskCreateApi = {
   onTaskCreated: null,
 };
 
-if (typeof globalThis !== 'undefined') {
-  globalThis.TaskMarketplaceTaskCreate = taskCreateApi;
-}
+appRoot().TaskMarketplaceTaskCreate = taskCreateApi;
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = taskCreateApi;
 }
