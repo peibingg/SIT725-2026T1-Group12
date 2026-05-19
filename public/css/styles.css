@@ -729,6 +729,106 @@ body {
   font-size: 0.85rem;
 }
 
+.tasks-create-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto 1rem;
+}
+
+.btn-create-task {
+  padding: 0.55rem 1.25rem;
+}
+
+.tasks-create-hint {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.create-task-panel {
+  max-width: 32rem;
+}
+
+.create-task-form .create-task-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.create-task-form textarea {
+  resize: vertical;
+  min-height: 6rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.field-counter {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.field-counter.warn {
+  color: #b45309;
+}
+
+.field-counter.err {
+  color: var(--danger, #c0392b);
+}
+
+.field-error {
+  min-height: 1.1rem;
+  font-size: 0.82rem;
+}
+
+.field-error.err {
+  color: var(--danger, #c0392b);
+}
+
+.create-task-credit-fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.create-task-credit-fieldset legend {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.create-task-credit-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.create-task-credit-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.create-task-credit-option input:disabled + span {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.create-task-form-msg {
+  min-height: 1.25rem;
+  margin: 0 0 0.75rem;
+}
+
 .tasks-load-msg {
   text-align: center;
   min-height: 1.25rem;
