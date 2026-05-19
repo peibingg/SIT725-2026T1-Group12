@@ -729,6 +729,14 @@ function initTasksPage() {
       return;
     }
     wireActions();
+    const taskCreate = globalThis.TaskMarketplaceTaskCreate;
+    if (taskCreate) {
+      taskCreate.onTaskCreated = async () => {
+        await loadBrowse();
+        await taskCreate.loadPostedOpenTasks();
+      };
+      await taskCreate.initTaskCreate();
+    }
     globalThis.TaskMarketplaceFlash?.consume();
     loadBrowse();
   })();

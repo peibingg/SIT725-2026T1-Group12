@@ -31,11 +31,40 @@
       <div class="tasks-inner">
         <header class="tasks-intro">
           <h1 class="tasks-title">Browse tasks</h1>
-          <p class="tasks-lead">Take open work you can do, or finish tasks you have already claimed.</p>
+          <p class="tasks-lead">Take open work you can do, post your own tasks, or finish work you have claimed.</p>
+          <div class="tasks-create-bar">
+            <button type="button" id="btn-create-task" class="btn btn-primary btn-create-task hidden">
+              Create task
+            </button>
+            <p id="create-task-zero-hint" class="tasks-create-hint hidden" role="status">
+              Earn or receive credits to post a task.
+            </p>
+          </div>
           <button type="button" id="btn-tasks-refresh" class="btn btn-ghost btn-tasks-refresh">Refresh lists</button>
         </header>
 
         <p id="tasks-load-msg" class="form-msg tasks-load-msg" role="status" aria-live="polite"></p>
+
+        <section class="tasks-section" aria-labelledby="posted-heading">
+          <h2 id="posted-heading" class="tasks-section-title">Your open postings</h2>
+          <p class="tasks-section-lead">Tasks you published that are still open for others to take.</p>
+          <div id="tasks-posted-empty" class="tasks-empty hidden" role="status">
+            You have no open postings yet. Create a task when you have credits to offer as a reward.
+          </div>
+          <div class="tasks-table-wrap">
+            <table class="tasks-table" id="tasks-posted-table" aria-label="Your open postings">
+              <thead>
+                <tr>
+                  <th scope="col">Title</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Credits</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tasks-posted-body"></tbody>
+            </table>
+          </div>
+        </section>
 
         <section class="tasks-section" aria-labelledby="open-heading">
           <h2 id="open-heading" class="tasks-section-title">Open for you</h2>
@@ -140,6 +169,48 @@
       </div>
     </dialog>
 
+    <dialog id="modal-create-task" class="auth-modal create-task-modal" aria-labelledby="create-task-heading">
+      <div class="modal-panel create-task-panel">
+        <button type="button" class="modal-close" data-close-modal aria-label="Close dialog">×</button>
+        <h2 id="create-task-heading" class="modal-title">Create a task</h2>
+        <p class="modal-lead">Offer credits as a reward. Others can claim your task when it is published.</p>
+        <form id="form-create-task" class="auth-form create-task-form" novalidate>
+          <label class="create-task-field">
+            Title
+            <input
+              type="text"
+              id="create-task-title"
+              name="title"
+              autocomplete="off"
+              maxlength="200"
+              required
+            />
+            <span id="create-task-title-count" class="field-counter" aria-live="polite">0 / 200</span>
+            <span id="create-task-title-error" class="field-error form-msg" role="alert"></span>
+          </label>
+          <label class="create-task-field">
+            Description
+            <textarea
+              id="create-task-description"
+              name="description"
+              rows="5"
+              maxlength="20000"
+              required
+            ></textarea>
+            <span id="create-task-description-count" class="field-counter" aria-live="polite">0 / 20000</span>
+            <span id="create-task-description-error" class="field-error form-msg" role="alert"></span>
+          </label>
+          <fieldset class="create-task-credit-fieldset">
+            <legend>Credit reward</legend>
+            <div id="create-task-credit-options" class="create-task-credit-options" role="radiogroup" aria-label="Credit reward"></div>
+            <span id="create-task-credit-error" class="field-error form-msg" role="alert"></span>
+          </fieldset>
+          <p id="create-task-form-msg" class="form-msg create-task-form-msg" role="status"></p>
+          <button type="submit" id="btn-create-task-submit" class="btn btn-submit">Publish task</button>
+        </form>
+      </div>
+    </dialog>
+
     <dialog id="modal-signin" class="auth-modal" aria-labelledby="signin-title">
       <div class="modal-panel">
         <button type="button" class="modal-close" data-close-modal aria-label="Close dialog">×</button>
@@ -163,8 +234,12 @@
     <script src="/js/authValidation.js"></script>
     <script src="/js/flash.js"></script>
     <script src="/js/scripts.js"></script>
+    <script src="/js/taskCredits.js?v=2"></script>
+    <script src="/js/taskCreateValidation.js?v=2"></script>
+    <script src="/js/apiClient.js?v=2"></script>
     <script src="/js/tasksUi.js"></script>
     <script src="/js/taskCommentsUi.js"></script>
-    <script src="/js/tasks.js"></script>
+    <script src="/js/taskCreate.js?v=2"></script>
+    <script src="/js/tasks.js?v=2"></script>
   </body>
 </html>
