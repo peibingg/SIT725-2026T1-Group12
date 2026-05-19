@@ -3,6 +3,7 @@
 const mongoose = require('mongoose');
 const Task = require('../models/task.model');
 const taskStatusService = require('../services/taskStatus.service');
+const taskService = require('../services/task.service');
 
 const USER_POPULATE_SELECT = taskStatusService.USER_POPULATE_SELECT;
 
@@ -41,6 +42,65 @@ function invalidIdResponse(res) {
 
 const ping = (req, res) => {
   res.json({ statusCode: 200, message: 'task controller skeleton' });
+};
+
+const createMeta = async (req, res) => {
+  try {
+    const userId = parseUserId(req);
+    const r = await taskService.getCreateMeta(userId);
+    if (!r.ok) {
+      return res.status(r.httpStatus).json({ statusCode: r.httpStatus, message: r.message });
+    }
+    return res.json({ statusCode: 200, ...r.meta });
+  } catch (err) {
+    console.error('createMeta error:', err.message);
+    res.status(500).json({ statusCode: 500, message: 'Could not load create metadata' });
+  }
+};
+
+const createTask = async (req, res) => {
+  try {
+    const ownerUserId = parseUserId(req);
+    const { title, description, credit } = req.body || {};
+
+    const r = await taskService.createTask({
+      ownerUserId,
+      title,
+      description,
+      credit,
+    });
+
+    if (!r.ok) {
+      return res.status(r.httpStatus).json({ statusCode: r.httpStatus, message: r.message });
+    }
+
+    return res.status(201).json({
+      statusCode: 201,
+      message: 'Task created',
+      task: serializeTask(r.task),
+    });
+  } catch (err) {
+    console.error('createTask error:', err.message);
+    res.status(500).json({ statusCode: 500, message: 'Could not create task' });
+  }
+};
+
+const listTasks = async (req, res) => {
+  try {
+    const userId = parseUserId(req);
+    const scope = req.query.scope;
+    const r = await taskService.listTasks({ userId, scope });
+    if (!r.ok) {
+      return res.status(r.httpStatus).json({ statusCode: r.httpStatus, message: r.message });
+    }
+    return res.json({
+      statusCode: 200,
+      tasks: r.tasks.map((t) => serializeTask(t)),
+    });
+  } catch (err) {
+    console.error('listTasks error:', err.message);
+    res.status(500).json({ statusCode: 500, message: 'Could not load tasks' });
+  }
 };
 
 const browse = async (req, res) => {
@@ -212,4 +272,13 @@ const approveTask = async (req, res) => {
   }
 };
 
-module.exports = { ping, browse, takeTask, completeTask, approveTask };
+module.exports = {
+  ping,
+  createMeta,
+  createTask,
+  listTasks,
+  browse,
+  takeTask,
+  completeTask,
+  approveTask,
+};

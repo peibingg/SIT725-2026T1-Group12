@@ -48,6 +48,284 @@ async function signup(agent, email, name = 'T') {
     .expect(201);
 }
 
+async function setCreditBalance(email, credit_balance) {
+  await User.updateOne({ email }, { $set: { credit_balance } });
+}
+
+const validPayload = {
+  title: 'Fix the login bug',
+  description: 'Reproduce and patch the session timeout issue on sign-in.',
+  credit: 3,
+};
+
+describe('GET /api/tasks/create-meta', () => {
+  it('returns 401 without session', async () => {
+    await request(app).get('/api/tasks/create-meta').expect(401);
+  });
+
+  it.each([
+    [0, false, []],
+    [3, true, [1, 3]],
+    [4, true, [1, 3]],
+    [10, true, [1, 3, 5, 8]],
+  ])('balance %i → canCreate=%s allowedCredits=%j', async (balance, canCreate, allowed) => {
+    const agent = request.agent(app);
+    await signup(agent, `meta-${balance}@example.com`, 'Meta');
+    await setCreditBalance(`meta-${balance}@example.com`, balance);
+
+    const res = await agent.get('/api/tasks/create-meta').expect(200);
+    expect(res.body.statusCode).toBe(200);
+    expect(res.body.credit_balance).toBe(balance);
+    expect(res.body.canCreate).toBe(canCreate);
+    expect(res.body.allowedCredits).toEqual(allowed);
+    expect(res.body.presetCredits).toEqual([1, 3, 5, 8]);
+  });
+});
+
+describe('POST /api/tasks', () => {
+  it('returns 401 without session', async () => {
+    await request(app).post('/api/tasks').send(validPayload).expect(401);
+  });
+
+  it('happy path: creates Open task with session owner', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'creator@example.com', 'Creator');
+    await setCreditBalance('creator@example.com', 10);
+    const me = await agent.get('/api/auth/me').expect(200);
+
+    const res = await agent.post('/api/tasks').send(validPayload).expect(201);
+    expect(res.body.statusCode).toBe(201);
+    expect(res.body.task).toMatchObject({
+      title: validPayload.title,
+      description: validPayload.description,
+      credit: 3,
+      status: 'Open',
+    });
+    expect(res.body.task.taker).toBeNull();
+    expect(res.body.task.owner.id).toBe(me.body.user.id);
+
+    const stored = await Task.findById(res.body.task.id).lean();
+    expect(stored.owner_user_id.toString()).toBe(me.body.user.id);
+    expect(stored.taker_user_id).toBeNull();
+    expect(stored.status).toBe('Open');
+  });
+
+  it('ignores owner_user_id in body and uses session user', async () => {
+    const agent = request.agent(app);
+    const otherAgent = request.agent(app);
+    await signup(agent, 'real-owner@example.com', 'Real');
+    await signup(otherAgent, 'fake-owner@example.com', 'Fake');
+    await setCreditBalance('real-owner@example.com', 8);
+    const otherMe = await otherAgent.get('/api/auth/me').expect(200);
+    const me = await agent.get('/api/auth/me').expect(200);
+
+    const res = await agent
+      .post('/api/tasks')
+      .send({
+        ...validPayload,
+        owner_user_id: otherMe.body.user.id,
+      })
+      .expect(201);
+
+    expect(res.body.task.owner.id).toBe(me.body.user.id);
+    expect(res.body.task.owner.id).not.toBe(otherMe.body.user.id);
+  });
+
+  it('returns 403 when credit_balance is 0', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'zero-balance@example.com', 'Zero');
+    const res = await agent.post('/api/tasks').send(validPayload).expect(403);
+    expect(res.body.message).toMatch(/positive credit balance/i);
+  });
+
+  it('returns 403 when credit_balance is negative edge (stored as 0)', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'neg@example.com', 'Neg');
+    await setCreditBalance('neg@example.com', 0);
+    await agent.post('/api/tasks').send(validPayload).expect(403);
+  });
+
+  it.each([
+    ['title', { description: 'd', credit: 1 }],
+    ['description', { title: 'Valid title', credit: 1 }],
+    ['credit', { title: 'Valid title', description: 'Body text' }],
+  ])('returns 400 when %s is missing', async (field, body) => {
+    const agent = request.agent(app);
+    await signup(agent, `missing-${field}@example.com`, 'M');
+    await setCreditBalance(`missing-${field}@example.com`, 10);
+    const res = await agent.post('/api/tasks').send(body).expect(400);
+    expect(res.body.statusCode).toBe(400);
+  });
+
+  it('returns 400 for title shorter than 3 characters after trim', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'short-title@example.com', 'S');
+    await setCreditBalance('short-title@example.com', 10);
+    await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, title: '  ab  ' })
+      .expect(400);
+  });
+
+  it('returns 400 for title longer than 200 characters', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'long-title@example.com', 'L');
+    await setCreditBalance('long-title@example.com', 10);
+    await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, title: 'a'.repeat(201) })
+      .expect(400);
+  });
+
+  it('returns 400 for empty description after trim', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'empty-desc@example.com', 'E');
+    await setCreditBalance('empty-desc@example.com', 10);
+    await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, description: '   ' })
+      .expect(400);
+  });
+
+  it('returns 400 for description over 20000 characters', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'long-desc@example.com', 'LD');
+    await setCreditBalance('long-desc@example.com', 10);
+    await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, description: 'x'.repeat(20001) })
+      .expect(400);
+  });
+
+  it.each([2, 6, 10])('returns 400 for non-whitelist credit %s', async (credit) => {
+    const agent = request.agent(app);
+    await signup(agent, `bad-credit-${credit}@example.com`, 'B');
+    await setCreditBalance(`bad-credit-${credit}@example.com`, 20);
+    const res = await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, credit })
+      .expect(400);
+    expect(res.body.message).toMatch(/one of/i);
+  });
+
+  it('returns 400 for non-integer credit', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'frac-credit@example.com', 'F');
+    await setCreditBalance('frac-credit@example.com', 20);
+    const res = await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, credit: 0.5 })
+      .expect(400);
+    expect(res.body.message).toMatch(/whole number/i);
+  });
+
+  it.each([
+    [1, 1, 201],
+    [3, 3, 201],
+    [3, 5, 400],
+    [4, 5, 400],
+    [4, 8, 400],
+    [8, 8, 201],
+    [9, 8, 201],
+    [9, 1, 201],
+  ])('balance %i credit %i → %i', async (balance, credit, expectedStatus) => {
+    const agent = request.agent(app);
+    const email = `bal-${balance}-cred-${credit}@example.com`;
+    await signup(agent, email, 'Bal');
+    await setCreditBalance(email, balance);
+    const res = await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, credit })
+      .expect(expectedStatus);
+    expect(res.body.statusCode).toBe(expectedStatus);
+    if (expectedStatus === 400) {
+      expect(res.body.message).toMatch(/balance|one of/i);
+    }
+  });
+});
+
+describe('GET /api/tasks', () => {
+  it('returns 401 without session', async () => {
+    await request(app).get('/api/tasks').expect(401);
+  });
+
+  it('returns serialized tasks for default scope', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'lister@example.com', 'Lister');
+    const me = await agent.get('/api/auth/me').expect(200);
+    const myId = new mongoose.Types.ObjectId(me.body.user.id);
+
+    const other = await User.create({
+      first_name: 'Other',
+      last_name: 'User',
+      email: 'lister-other@example.com',
+      password_hash: await bcrypt.hash('x', 8),
+    });
+
+    await Task.insertMany([
+      {
+        title: 'Mine open',
+        description: 'd',
+        owner_user_id: myId,
+        taker_user_id: null,
+        credit: 3,
+        status: 'Open',
+      },
+      {
+        title: 'Open for me',
+        description: 'd',
+        owner_user_id: other._id,
+        taker_user_id: null,
+        credit: 5,
+        status: 'Open',
+      },
+    ]);
+
+    const res = await agent.get('/api/tasks').expect(200);
+    expect(res.body.statusCode).toBe(200);
+    const titles = res.body.tasks.map((t) => t.title).sort();
+    expect(titles).toEqual(['Mine open', 'Open for me'].sort());
+    expect(res.body.tasks[0]).toHaveProperty('id');
+    expect(res.body.tasks[0]).toHaveProperty('status');
+    expect(res.body.tasks[0]).toHaveProperty('credit');
+  });
+
+  it('scope=owner returns only owned tasks', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'owner-scope@example.com', 'OS');
+    const me = await agent.get('/api/auth/me').expect(200);
+    const myId = new mongoose.Types.ObjectId(me.body.user.id);
+
+    const other = await User.create({
+      first_name: 'X',
+      last_name: 'Y',
+      email: 'owner-scope-other@example.com',
+      password_hash: await bcrypt.hash('x', 8),
+    });
+
+    await Task.insertMany([
+      {
+        title: 'Owned',
+        description: 'd',
+        owner_user_id: myId,
+        credit: 1,
+        status: 'Open',
+      },
+      {
+        title: 'Not mine',
+        description: 'd',
+        owner_user_id: other._id,
+        credit: 1,
+        status: 'Open',
+      },
+    ]);
+
+    const res = await agent.get('/api/tasks?scope=owner').expect(200);
+    expect(res.body.tasks).toHaveLength(1);
+    expect(res.body.tasks[0].title).toBe('Owned');
+  });
+});
+
 describe('GET /api/tasks/browse', () => {
   it('returns 401 without session', async () => {
     await request(app).get('/api/tasks/browse').expect(401);
