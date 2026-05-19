@@ -7,7 +7,10 @@ const taskCommentController = require('../controllers/taskComment.controller');
 const { requireAuth } = require('../middleware/requireAuth');
 
 router.get('/ping', taskController.ping);
+router.get('/create-meta', requireAuth, taskController.createMeta);
 router.get('/browse', requireAuth, taskController.browse);
+router.get('/', requireAuth, taskController.listTasks);
+router.post('/', requireAuth, taskController.createTask);
 router.get('/:taskId/comments', requireAuth, taskCommentController.listComments);
 router.post('/:taskId/comments', requireAuth, taskCommentController.createComment);
 router.post('/:id/approve', requireAuth, taskController.approveTask);
