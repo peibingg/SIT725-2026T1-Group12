@@ -3,7 +3,7 @@
 const mongoose = require('mongoose');
 const Task = require('../models/task.model');
 const User = require('../models/user.model');
-const { validateCreateTaskInput, buildCreateMeta } = require('../validators/task.validation');
+const { validateTaskCreatePayload, buildCreateMeta } = require('../validators/task.validation');
 const taskStatusService = require('./taskStatus.service');
 
 const USER_POPULATE_SELECT = taskStatusService.USER_POPULATE_SELECT;
@@ -26,7 +26,7 @@ async function createTask({ ownerUserId, title, description, credit }) {
   const loaded = await loadUserCreditBalance(ownerUserId);
   if (!loaded.ok) return loaded;
 
-  const validated = validateCreateTaskInput({
+  const validated = validateTaskCreatePayload({
     title,
     description,
     credit,

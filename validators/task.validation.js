@@ -6,8 +6,29 @@ const TITLE_MIN_LENGTH = 3;
 const TITLE_MAX_LENGTH = 200;
 const DESCRIPTION_MAX_LENGTH = 20000;
 
-function validateCreateTaskInput({ title, description, credit, creditBalance }) {
-  if (creditBalance <= 0) {
+function isPresentTextField(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function assertStringField(value, fieldLabel) {
+  if (typeof value !== 'string') {
+    return {
+      ok: false,
+      httpStatus: 400,
+      message: `${fieldLabel} must be a string`,
+    };
+  }
+  return null;
+}
+
+/**
+ * Server-side validation for POST /api/tasks (FR-4).
+ * @returns {{ ok: true, title: string, description: string, credit: number } | { ok: false, httpStatus: number, message: string }}
+ */
+function validateTaskCreatePayload({ title, description, credit, creditBalance }) {
+  const balance = Number(creditBalance) || 0;
+
+  if (balance <= 0) {
     return {
       ok: false,
       httpStatus: 403,
@@ -15,18 +36,24 @@ function validateCreateTaskInput({ title, description, credit, creditBalance }) 
     };
   }
 
-  if (title === undefined || title === null || String(title).trim() === '') {
+  if (!isPresentTextField(title)) {
     return { ok: false, httpStatus: 400, message: 'Title is required' };
   }
-  if (description === undefined || description === null || String(description).trim() === '') {
+  const titleTypeErr = assertStringField(title, 'Title');
+  if (titleTypeErr) return titleTypeErr;
+
+  if (!isPresentTextField(description)) {
     return { ok: false, httpStatus: 400, message: 'Description is required' };
   }
+  const descTypeErr = assertStringField(description, 'Description');
+  if (descTypeErr) return descTypeErr;
+
   if (credit === undefined || credit === null || credit === '') {
     return { ok: false, httpStatus: 400, message: 'Credit is required' };
   }
 
-  const trimmedTitle = String(title).trim();
-  const trimmedDescription = String(description).trim();
+  const trimmedTitle = title.trim();
+  const trimmedDescription = description.trim();
 
   if (trimmedTitle.length < TITLE_MIN_LENGTH || trimmedTitle.length > TITLE_MAX_LENGTH) {
     return {
@@ -34,6 +61,10 @@ function validateCreateTaskInput({ title, description, credit, creditBalance }) 
       httpStatus: 400,
       message: `Title must be between ${TITLE_MIN_LENGTH} and ${TITLE_MAX_LENGTH} characters`,
     };
+  }
+
+  if (trimmedDescription.length === 0) {
+    return { ok: false, httpStatus: 400, message: 'Description is required' };
   }
 
   if (trimmedDescription.length > DESCRIPTION_MAX_LENGTH) {
@@ -57,7 +88,7 @@ function validateCreateTaskInput({ title, description, credit, creditBalance }) 
     };
   }
 
-  if (creditNum > creditBalance) {
+  if (creditNum > balance) {
     return {
       ok: false,
       httpStatus: 400,
@@ -73,6 +104,9 @@ function validateCreateTaskInput({ title, description, credit, creditBalance }) 
   };
 }
 
+/** @deprecated Use validateTaskCreatePayload */
+const validateCreateTaskInput = validateTaskCreatePayload;
+
 function buildCreateMeta(creditBalance) {
   const balance = Number(creditBalance) || 0;
   return {
@@ -87,6 +121,7 @@ module.exports = {
   TITLE_MIN_LENGTH,
   TITLE_MAX_LENGTH,
   DESCRIPTION_MAX_LENGTH,
+  validateTaskCreatePayload,
   validateCreateTaskInput,
   buildCreateMeta,
 };
