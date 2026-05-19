@@ -157,6 +157,32 @@ describe('POST /api/tasks', () => {
     expect(res.body.statusCode).toBe(400);
   });
 
+  it('does not insert a task when validation fails', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'no-persist@example.com', 'NP');
+    await setCreditBalance('no-persist@example.com', 10);
+    const before = await Task.countDocuments();
+
+    await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, title: 'ab', credit: 99 })
+      .expect(400);
+
+    const after = await Task.countDocuments();
+    expect(after).toBe(before);
+  });
+
+  it('returns 400 when title is not a string', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'title-num@example.com', 'TN');
+    await setCreditBalance('title-num@example.com', 10);
+    const res = await agent
+      .post('/api/tasks')
+      .send({ ...validPayload, title: 12345 })
+      .expect(400);
+    expect(res.body.message).toMatch(/string/i);
+  });
+
   it('returns 400 for title shorter than 3 characters after trim', async () => {
     const agent = request.agent(app);
     await signup(agent, 'short-title@example.com', 'S');
@@ -197,7 +223,7 @@ describe('POST /api/tasks', () => {
       .expect(400);
   });
 
-  it.each([2, 6, 10])('returns 400 for non-whitelist credit %s', async (credit) => {
+  it.each([0, 2, 9])('returns 400 for non-whitelist credit %s', async (credit) => {
     const agent = request.agent(app);
     await signup(agent, `bad-credit-${credit}@example.com`, 'B');
     await setCreditBalance(`bad-credit-${credit}@example.com`, 20);
@@ -222,9 +248,12 @@ describe('POST /api/tasks', () => {
   it.each([
     [1, 1, 201],
     [3, 3, 201],
+    [4, 1, 201],
+    [4, 3, 201],
     [3, 5, 400],
     [4, 5, 400],
     [4, 8, 400],
+    [0, 1, 403],
     [8, 8, 201],
     [9, 8, 201],
     [9, 1, 201],
