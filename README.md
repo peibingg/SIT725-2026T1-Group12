@@ -2,8 +2,6 @@
 
 SIT725 Group 12 — a **credit-based task marketplace** built with **Node.js**, **Express**, **MongoDB**, and **Mongoose**. The web UI is static files under `public/` (HTML/CSS/JS) calling JSON APIs under `/api`.
 
-For Jira-style user stories and design notes, see the [`docs/`](docs/) folder.
-
 ---
 
 ## Prerequisites
@@ -11,7 +9,7 @@ For Jira-style user stories and design notes, see the [`docs/`](docs/) folder.
 | Requirement | Notes |
 |-------------|--------|
 | **Node.js** | **Current LTS** (e.g. 20.x or 22.x) recommended. |
-| **MongoDB** | **6+** running locally, or use **MongoDB Atlas** and set `MONGODB_URI` accordingly. |
+| **MongoDB** | **6+** running locally, or use **MongoDB Atlas** and set `MONGODB_URI` accordingly. **Owner approve** uses transactions on a **replica set**; the default single-node `mongodb://127.0.0.1:27017/...` install uses an automatic non-transaction fallback so Approve still works in local dev. |
 | **Git** | To clone this repository. |
 
 ---
@@ -148,10 +146,10 @@ Base URL: `http://localhost:<PORT>` (default port **3000**).
 | GET | `/api/tasks/create-meta` | **Session required.** Returns `{ credit_balance, canCreate, allowedCredits, presetCredits }` for the Create Task UI. `canCreate` is true when `credit_balance` \> 0; `allowedCredits` is `[1, 3, 5, 8]` filtered to values ≤ balance. **401** if not signed in. |
 | POST | `/api/tasks` | **Session required.** Create a task. Body: `{ title, description, credit }` (owner comes from session only). **201** with `{ task }` on success. **403** if `credit_balance` ≤ 0. **400** for validation (title 3–200 chars, non-empty description ≤ 20 000 chars, `credit` ∈ {1, 3, 5, 8} and ≤ balance). |
 | GET | `/api/tasks` | **Session required.** Flat list `{ tasks }` for the Tasks menu. Optional `?scope=owner\|taker\|open\|all` (default **all**: owned, taken, or open marketplace). Each task: `id`, `title`, `description`, `credit`, `status`, `created`, `owner`, `taker`. |
-| GET | `/api/tasks/browse` | **Session required.** Returns `{ openForMe, myAsTaker, myAsOwner, meta }`: takeable **Open** tasks (no taker, **not owned by you** — your own open listings are excluded); tasks where you are **taker** with status **In Progress**, **Completed**, or **Finalised**; and tasks you **own** with status **In Progress**, **Completed**, or **Finalised** (so you can open the **Progress** thread on the Tasks page). `meta.myPostedOpenCount` counts your own open tasks (for empty-state hints). Each task includes `owner` / `taker` as `{ id, first_name, last_name, email }` (no `password_hash`). |
+| GET | `/api/tasks/browse` | **Session required.** Returns `{ openForMe, myAsTaker, myAsOwner, meta }`: takeable **Open** tasks (no taker, **not owned by you** — your own open listings are excluded); tasks where you are **taker** with status **In Progress**, **Completed**, or **Finalised**; and tasks you **own** with status **In Progress**, **Completed**, or **Finalised** (owner **Completed** rows show an **Approve** action on the Tasks page). `meta.myPostedOpenCount` counts your own open tasks (for empty-state hints). Each task includes `owner` / `taker` as `{ id, first_name, last_name, email }` (no `password_hash`). |
 | POST | `/api/tasks/:id/take` | **Session required.** Atomically claims an **Open** task with no taker if you are not the owner → **In Progress** and you become taker. **409** if already claimed or wrong state; **403** if you own the task; **404** if missing. |
 | POST | `/api/tasks/:id/complete` | **Session required.** Taker only: **In Progress** → **Completed**. **403** if not the assigned taker; **409** if not in progress; **404** if missing. |
-| POST | `/api/tasks/:id/approve` | **Session required.** **Owner only:** **Completed** → **Finalised** and atomically transfers **`task.credit`** from owner to taker (MongoDB transaction). Rejects if owner **credit_balance** \< task credit (**400**), if a **Payout** already exists (**409**), or if caller is not the owner (**403**). |
+| POST | `/api/tasks/:id/approve` | **Session required.** **Owner only:** **Completed** → **Finalised** and atomically transfers **`task.credit`** from owner to taker (MongoDB transaction). Called from the Tasks page **Approve** button on owner **Completed** tasks. Rejects if owner **credit_balance** \< task credit (**400**), if a **Payout** already exists (**409**), or if caller is not the owner (**403**). |
 | GET | `/api/tasks/:taskId/comments` | **Session required.** **Owner or assigned taker** may list progress comments for that task. Returns `{ comments }` with items `{ id, user_id, comment, created, user? }` sorted by **`created`** ascending. **`user`** is populated with `first_name`, `last_name`, `email` (no `password_hash`). **403** if neither owner nor taker; **404** if task missing; **400** if `taskId` is not a valid ObjectId. |
 | POST | `/api/tasks/:taskId/comments` | **Session required.** **Assigned taker only**, and only while status is **In Progress**. JSON body: **`comment`** (required, trimmed, non-empty, max **10 000** characters). **201** on success. **403** if wrong role or wrong status; **400** if validation fails; **404** if task missing. |
 | GET | `/api/credits/ping` | Credits router smoke test. |
@@ -173,7 +171,6 @@ The static site (`public/index.html`) uses the auth endpoints from the browser.
 | `routes/` | Express routers mounted under `/api`. |
 | `public/` | Static UI (`index.html`, `css/`, `js/`). |
 | `seed.js` | Sample data loader. |
-| `docs/` | Markdown user stories / specs for Jira. |
 
 ---
 
@@ -190,7 +187,6 @@ The static site (`public/index.html`) uses the auth endpoints from the browser.
 
 - After a **fresh clone**, follow **Setup** → **seed** → **open the site** and confirm sign-up / sign-in flows.
 - Run **`npm test`** before pushing; see **Automated tests** above for per-suite commands.
-- In GitHub/GitLab, preview this README and **click relative links** (e.g. [`docs/`](docs/)) to ensure they resolve.
 
 ---
 
