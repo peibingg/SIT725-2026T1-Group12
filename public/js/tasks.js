@@ -29,7 +29,8 @@ function showLoadMsg(el, text, isError) {
   if (!el) return;
   el.textContent = text || '';
   el.classList.remove('ok', 'err');
-  if (text) el.classList.add(isError ? 'err' : 'ok');
+  if (text && isError) el.classList.add('err');
+  else if (text && !isError) el.classList.add('ok');
 }
 
 async function getJson(url) {
@@ -196,10 +197,21 @@ function appendActionsMine(tr, task, currentUserId) {
   tr.appendChild(td);
 }
 
-function appendActionsOwner(tr) {
+function appendActionsOwner(tr, task) {
   const td = document.createElement('td');
   td.className = 'tasks-actions-cell';
-  td.appendChild(document.createTextNode('—'));
+  if (task.status === 'Completed') {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-primary btn-task-action';
+    btn.textContent = 'Approve';
+    btn.dataset.action = 'approve';
+    btn.dataset.taskId = task.id;
+    btn.setAttribute('aria-label', `Approve and pay ${task.credit != null ? task.credit : ''} credits for ${task.title || 'task'}`);
+    td.appendChild(btn);
+  } else {
+    td.appendChild(document.createTextNode('—'));
+  }
   tr.appendChild(td);
 }
 
@@ -419,7 +431,7 @@ function renderRow(task, mode, currentUserId) {
     appendActionsOpen(tr, task);
     appendProgressCell(tr, task, 'open');
   } else if (mode === 'owner') {
-    appendActionsOwner(tr);
+    appendActionsOwner(tr, task);
     appendProgressCell(tr, task, 'owner');
   } else {
     appendActionsMine(tr, task, currentUserId);
@@ -583,6 +595,38 @@ async function handleComplete(taskId) {
   showLoadMsg(msgEl, errText, true);
 }
 
+async function refreshStoredUserFromServer() {
+  const { res, data } = await getJson('/api/auth/me');
+  if (!res.ok || !data.user) return;
+  const session = globalThis.TaskMarketplaceSession;
+  if (session && typeof session.setStoredUser === 'function') {
+    session.setStoredUser(data.user);
+    if (typeof session.updateHeaderAuth === 'function') {
+      session.updateHeaderAuth();
+    }
+  } else {
+    try {
+      sessionStorage.setItem(TM_STORAGE_USER_KEY, JSON.stringify(data.user));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+}
+
+async function handleApprove(taskId) {
+  const msgEl = document.getElementById('tasks-load-msg');
+  const { res, data } = await postJsonEmpty(`/api/tasks/${encodeURIComponent(taskId)}/approve`);
+  if (res.ok && data.task) {
+    showLoadMsg(msgEl, data.message || 'Task finalised and credits transferred.', false);
+    await refreshStoredUserFromServer();
+    await loadBrowse();
+    return;
+  }
+  const errText = data.message || 'Could not approve this task.';
+  await loadBrowse();
+  showLoadMsg(msgEl, errText, true);
+}
+
 function wireCommentsInteraction() {
   const page = document.getElementById('tasks-page');
   if (!page || page.dataset.commentsWired === '1') return;
@@ -704,6 +748,17 @@ function wireActions() {
     if (!id) return;
     btn.disabled = true;
     handleComplete(id).finally(() => {
+      btn.disabled = false;
+    });
+  });
+
+  document.getElementById('tasks-owner-body')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="approve"]');
+    if (!btn || btn.disabled) return;
+    const id = btn.dataset.taskId;
+    if (!id) return;
+    btn.disabled = true;
+    handleApprove(id).finally(() => {
       btn.disabled = false;
     });
   });
