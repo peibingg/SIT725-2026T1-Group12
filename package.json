@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "mongo:start": "bash scripts/start-mongo.sh",
+    "dev": "npm run mongo:start && npm start",
     "seed": "node seed.js",
     "seed:reset": "node scripts/reset-db-and-seed.js",
     "test": "NODE_ENV=test ./node_modules/.bin/jest --runInBand --forceExit"
@@ -30,3 +32,4 @@
     "supertest": "^7.1.0"
   }
 }
+ 

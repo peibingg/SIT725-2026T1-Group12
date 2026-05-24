@@ -303,3 +303,105 @@ describe('Tasks page (DOM)', () => {
     expect(document.querySelector('#tasks-owner-body [data-action="approve"]')).toBeTruthy();
   });
 });
+
+describe('US-8 Approve button visibility (DOM)', () => {
+  const ownerUser = {
+    id: 'owner-us8',
+    email: 'owner-us8@example.com',
+    credit_balance: 50,
+    first_name: 'O',
+    last_name: 'W',
+    role: 'User',
+  };
+
+  function ownerTask(id, status, takerId = 'taker-1') {
+    return {
+      id,
+      title: `Task ${id}`,
+      description: 'd',
+      credit: 5,
+      status,
+      owner: { id: 'owner-us8', first_name: 'O', last_name: 'W', email: ownerUser.email },
+      taker: takerId
+        ? { id: takerId, first_name: 'T', last_name: 'K', email: 'taker@example.com' }
+        : null,
+    };
+  }
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    sessionStorage.setItem('taskMarketplaceUser', JSON.stringify(ownerUser));
+    clearTasksCaches();
+    loadTasksPageShell();
+    globalThis.TaskMarketplaceSession = {
+      getStoredUser: () => JSON.parse(sessionStorage.getItem('taskMarketplaceUser')),
+      setStoredUser: (u) => sessionStorage.setItem('taskMarketplaceUser', JSON.stringify(u)),
+      updateHeaderAuth: jest.fn(),
+    };
+    globalThis.fetch = jest.fn().mockResolvedValue(
+      jsonRes(true, 200, {
+        statusCode: 200,
+        openForMe: [],
+        myAsTaker: [],
+        myAsOwner: [
+          ownerTask('o-open', 'Open', null),
+          ownerTask('o-prog', 'In Progress'),
+          ownerTask('o-done', 'Completed'),
+          ownerTask('o-fin', 'Finalised'),
+        ],
+      }),
+    );
+    require('../public/js/tasksUi.js');
+    require('../public/js/taskCommentsUi.js');
+    require('../public/js/tasks.js');
+  });
+
+  it('shows Approve only for Completed in owner table', async () => {
+    await new Promise((r) => setTimeout(r, 40));
+    const approveButtons = document.querySelectorAll('#tasks-owner-body [data-action="approve"]');
+    expect(approveButtons.length).toBe(1);
+    expect(approveButtons[0].dataset.taskId).toBe('o-done');
+    expect(approveButtons[0].textContent).toBe('Approve');
+  });
+
+  it('does not show Approve in taker table for Completed task', async () => {
+    clearTasksCaches();
+    sessionStorage.setItem(
+      'taskMarketplaceUser',
+      JSON.stringify({
+        id: 'taker-us8',
+        email: 'taker@example.com',
+        credit_balance: 10,
+        first_name: 'T',
+        last_name: 'K',
+        role: 'User',
+      }),
+    );
+    globalThis.fetch = jest.fn().mockResolvedValue(
+      jsonRes(true, 200, {
+        statusCode: 200,
+        openForMe: [],
+        myAsTaker: [
+          {
+            id: 't-completed',
+            title: 'Done work',
+            description: 'd',
+            credit: 3,
+            status: 'Completed',
+            owner: { id: 'other-owner', first_name: 'O', last_name: 'X', email: 'o@example.com' },
+            taker: { id: 'taker-us8', first_name: 'T', last_name: 'K', email: 'taker@example.com' },
+          },
+        ],
+        myAsOwner: [],
+      }),
+    );
+    require('../public/js/tasksUi.js');
+    require('../public/js/taskCommentsUi.js');
+    require('../public/js/tasks.js');
+
+    await new Promise((r) => setTimeout(r, 40));
+    expect(document.querySelector('#tasks-mine-body [data-action="approve"]')).toBeNull();
+    expect(document.querySelector('#tasks-mine-body [data-action="complete"]')).toBeNull();
+  });
+});
+ 

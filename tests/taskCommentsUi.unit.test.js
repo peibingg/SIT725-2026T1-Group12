@@ -63,4 +63,12 @@ describe('taskCommentsUi (US-7 client helpers)', () => {
     expect(s.showComposer).toBe(false);
     expect(s.hint).toMatch(/in progress/i);
   });
+
+  it('composerStateForTask: taker + Finalised — closed, read-only', () => {
+    const task = { status: 'Finalised', owner: { id: 'o1' }, taker: { id: 't1' } };
+    const s = tc.composerStateForTask(task, 't1');
+    expect(s.showComposer).toBe(false);
+    expect(s.hint).toMatch(/closed/i);
+  });
 });
+ 
