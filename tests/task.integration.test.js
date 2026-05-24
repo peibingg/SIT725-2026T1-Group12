@@ -1,3 +1,4 @@
+
 'use strict';
 
 const request = require('supertest');
@@ -828,6 +829,89 @@ describe('POST /api/tasks/:id/approve', () => {
     expect(fresh.status).toBe('Completed');
     const nPayout = await Transaction.countDocuments({ task_id: task._id, purpose: 'Payout' });
     expect(nPayout).toBe(0);
+  });
+
+  it('unrelated user cannot approve (403)', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    const otherAgent = request.agent(app);
+    await signup(ownerAgent, 'ap6-o@example.com', 'AP6O');
+    await signup(takerAgent, 'ap6-t@example.com', 'AP6T');
+    await signup(otherAgent, 'ap6-x@example.com', 'AP6X');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap6-o@example.com' }, { $set: { credit_balance: 40 } });
+
+    const task = await Task.create({
+      title: 'Not yours',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 10,
+      status: 'Completed',
+    });
+
+    await otherAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(403);
+    const fresh = await Task.findById(task._id).lean();
+    expect(fresh.status).toBe('Completed');
+  });
+
+  it.each([
+    ['Open', 'Open'],
+    ['In Progress', 'In Progress'],
+    ['Finalised', 'Finalised'],
+  ])('approve when task is %s returns 409 and status unchanged', async (_label, status) => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, `ap-st-o-${status.replace(/\s/g, '')}@example.com`, 'STO');
+    await signup(takerAgent, `ap-st-t-${status.replace(/\s/g, '')}@example.com`, 'STT');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: `ap-st-o-${status.replace(/\s/g, '')}@example.com` }, { $set: { credit_balance: 50 } });
+
+    const task = await Task.create({
+      title: `Wrong state ${status}`,
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 8,
+      status,
+    });
+
+    const res = await ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(409);
+    expect(res.body.statusCode).toBe(409);
+
+    const fresh = await Task.findById(task._id).lean();
+    expect(fresh.status).toBe(status);
+    const nPayout = await Transaction.countDocuments({ task_id: task._id, purpose: 'Payout' });
+    expect(nPayout).toBe(0);
+  });
+
+  it('happy path: take → complete → approve → Finalised in browse', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'ap-flow-o@example.com', 'FLO');
+    await signup(takerAgent, 'ap-flow-t@example.com', 'FLT');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap-flow-o@example.com' }, { $set: { credit_balance: 100 } });
+    await User.updateOne({ email: 'ap-flow-t@example.com' }, { $set: { credit_balance: 0 } });
+
+    const created = await ownerAgent.post('/api/tasks').send(validPayload).expect(201);
+    const taskId = created.body.task.id;
+
+    await takerAgent.post(`/api/tasks/${taskId}/take`).send({}).expect(200);
+    await takerAgent.post(`/api/tasks/${taskId}/complete`).send({}).expect(200);
+
+    const approveRes = await ownerAgent.post(`/api/tasks/${taskId}/approve`).send({}).expect(200);
+    expect(approveRes.body.task.status).toBe('Finalised');
+
+    const browse = await ownerAgent.get('/api/tasks/browse').expect(200);
+    const owned = browse.body.myAsOwner.find((t) => t.id === String(taskId));
+    expect(owned).toBeTruthy();
+    expect(owned.status).toBe('Finalised');
+
+    const persisted = await Task.findById(taskId).lean();
+    expect(persisted.status).toBe('Finalised');
   });
 
   it('concurrent approve: one success and one conflict or already paid', async () => {

@@ -344,7 +344,12 @@ async function approveWithTransaction({ taskId, ownerUserId }) {
 }
 
 /**
- * Completed → Finalised + credit transfer. Owner only.
+ * Completed → Finalised + credit transfer. Owner only (US-8 / FR-8, FR-9).
+ *
+ * FR-9: Credits move on **Finalised** (this approve step), not when the taker marks **Completed**.
+ * Payout is atomic with the status change (transaction on replica set, or ordered updates + rollback
+ * on standalone dev MongoDB). A payout `Transaction` row prevents double-spend / replay (409).
+ *
  * Uses transactions on replica set; falls back for standalone local MongoDB.
  */
 async function approveCompletedByOwner({ taskId, ownerUserId }) {
@@ -361,3 +366,4 @@ module.exports = {
   resetTransactionSupportCache,
   USER_POPULATE_SELECT,
 };
+ 

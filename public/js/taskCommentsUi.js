@@ -3,6 +3,8 @@
 /**
  * Task progress comments (US-7): pure helpers for mapping API payloads and client-side checks.
  * Server remains authoritative; these mirror trim / length for UX.
+ * US-8: builds a client-side confirmation comment when a task is approved/finalised.
+
  */
 const MAX_COMMENT_LENGTH = 10000;
 
@@ -82,6 +84,15 @@ function composerStateForTask(task, currentUserId) {
       hint: 'You can read progress updates from your taker. Only the assigned taker can post comments while work is in progress.',
     };
   }
+  if (isTaker && (task.status === 'Completed' || task.status === 'Finalised')) {
+    return {
+      showComposer: false,
+      hint:
+        task.status === 'Finalised'
+          ? 'This task is closed. Progress comments are read-only.'
+          : 'Progress comments can only be posted while the task is in progress.',
+    };
+  }
   if (isTaker) {
     return {
       showComposer: false,
@@ -130,3 +141,4 @@ if (typeof globalThis !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = taskCommentsUiApi;
 }
+ 
