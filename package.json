@@ -9,7 +9,14 @@
     "dev": "npm run mongo:start && npm start",
     "seed": "node seed.js",
     "seed:reset": "node scripts/reset-db-and-seed.js",
-    "test": "NODE_ENV=test ./node_modules/.bin/jest --runInBand --forceExit"
+    "test": "NODE_ENV=test ./node_modules/.bin/jest --runInBand --forceExit",
+    "docker:build": "docker build -t task-marketplace .",
+    "docker:up": "bash scripts/docker-up.sh",
+    "docker:up:host-mongo": "bash scripts/docker-up-host-mongo.sh",
+    "docker:down": "bash scripts/docker-down.sh",
+    "docker:down:host-mongo": "bash scripts/docker-down.sh",
+    "docker:smoke": "bash scripts/docker-smoke.sh",
+    "docker:smoke:host-mongo": "COMPOSE_FILE=docker-compose.host-mongo.yml bash scripts/docker-smoke.sh"
   },
   "keywords": [
     "express",

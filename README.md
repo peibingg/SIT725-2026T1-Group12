@@ -11,10 +11,13 @@ SIT725 Group 12 — a **credit-based task marketplace** built with **Node.js**, 
 | **Node.js** | **Current LTS** (e.g. 20.x or 22.x) recommended. |
 | **MongoDB** | **6+** running locally, or use **MongoDB Atlas** and set `MONGODB_URI` accordingly. **Owner approve** uses transactions on a **replica set**; the default single-node `mongodb://127.0.0.1:27017/...` install uses an automatic non-transaction fallback so Approve still works in local dev. |
 | **Git** | To clone this repository. |
+| **Docker** (optional) | **Docker Desktop** or Docker Engine + Compose v2 — run the full stack without a local `mongod` install (see **Docker** below). |
 
 ---
 
 ## Setup
+
+### Option A — Node.js + local MongoDB
 
 From a terminal:
 
@@ -27,12 +30,63 @@ npm install
 Start MongoDB (if local), then start the app:
 
 ```bash
+npm run mongo:start   # if MongoDB is not already running
 npm start
 ```
 
 The server listens on **`PORT`** (default **3000**). Open in a browser:
 
 **http://localhost:3000**
+
+Or use **`npm run dev`** to start MongoDB (when needed) and the app in one step.
+
+### Option B — Docker Compose (US-11)
+
+No local MongoDB install required. From the repo root:
+
+```bash
+cp .env.example .env
+# Edit .env — set SESSION_SECRET to a long random string (never commit .env)
+
+docker compose up --build
+```
+
+Open **http://localhost:3000** (or `http://localhost:$PORT` if you changed `PORT` in `.env`).
+
+| Command | Purpose |
+|---------|---------|
+| `docker compose up --build` | Build the app image, start **app** + **mongo**, wait for Mongo healthcheck |
+| `docker compose down` | Stop containers; **keeps** Mongo data in the `mongo_data` volume |
+| `docker compose down -v` | Stop and **delete** the named volume (fresh empty database next up) |
+| `npm run docker:build` | Build image only (`task-marketplace` tag) |
+| `npm run docker:up` | Same as `docker compose up --build -d` |
+| `npm run docker:down` | Stop the full stack |
+| `npm run docker:smoke` | Compose up → `GET /api/health` → compose down (skips if Docker unavailable) |
+
+**Low disk space / `failed to register layer: input/output error`:** Docker could not pull or store the `mongo:6` image (often when the Mac disk is nearly full). Free space first (`docker system prune -af`, empty Trash, Docker Desktop → **Settings → Resources**). Then either retry `npm run docker:up`, or use **host MongoDB** (no mongo image pull):
+
+```bash
+npm run mongo:start              # local mongod on 127.0.0.1:27017
+npm run docker:up:host-mongo     # app container only → host.docker.internal:27017
+npm run docker:down:host-mongo   # stop app container
+npm run docker:smoke:host-mongo  # smoke test with host Mongo
+```
+
+**First-time demo data inside Docker** (after stack is up):
+
+```bash
+docker compose exec app node seed.js
+```
+
+**Environment mapping:** Compose sets `MONGODB_URI=mongodb://mongo:27017/taskMarketplaceDB` (service hostname **`mongo`**, not `127.0.0.1`). `SESSION_SECRET` and `PORT` come from your **`.env`** file (see `.env.example`). Secrets are not baked into the image.
+
+**Dev bind-mount (optional):** edit code on the host and reload the container:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+**Health:** `curl http://localhost:3000/api/health` should return `"mongoose": true`. Mongo may take a few seconds on first start; the app retries connection (`MONGO_CONNECT_RETRIES` in `server.js`).
 
 ---
 
@@ -104,7 +158,16 @@ Source of truth: `models/*.model.js`.
 
 | Script | Command | Description |
 |--------|---------|-------------|
-| `start` | `npm start` | Runs `node server.js` — Express API + static `public/`. |
+| `start` | `npm start` | Runs `node server.js` — Express API + static `public/`. Requires MongoDB (see **Setup**). |
+| `mongo:start` | `npm run mongo:start` | Starts local **`mongod`** on `127.0.0.1:27017` if not already running. |
+| `dev` | `npm run dev` | **`mongo:start`** then **`npm start`**. |
+| `docker:build` | `npm run docker:build` | **`docker build`** — verifies the production image builds. |
+| `docker:up` | `npm run docker:up` | **`docker compose up --build -d`**. |
+| `docker:up:host-mongo` | `npm run docker:up:host-mongo` | App container only; uses **local** MongoDB on the host. |
+| `docker:down` | `npm run docker:down` | **`docker compose down`**. |
+| `docker:down:host-mongo` | `npm run docker:down:host-mongo` | Stop host-mongo compose stack. |
+| `docker:smoke` | `npm run docker:smoke` | End-to-end Compose smoke test (`/api/health`). |
+| `docker:smoke:host-mongo` | `npm run docker:smoke:host-mongo` | Smoke test using host MongoDB (no mongo pull). |
 | `seed` | `npm run seed` | Runs `node seed.js` — inserts sample data if DB has no users. |
 | `seed:reset` | `npm run seed:reset` | **Local dev only:** drops the DB from `MONGODB_URI`, then runs `seed.js` (use when `npm run seed` is skipped). |
 | `test` | `npm test` | Runs **Jest** (`NODE_ENV=test`, in-band): API integration, client validator unit tests, and DOM/jsdom tests. No separate E2E runner. |
@@ -118,6 +181,8 @@ From the repo root (after `npm install`):
 | What | Command |
 |------|---------|
 | **All tests** | `npm test` |
+| **Docker image build** (skipped if Docker daemon unavailable) | `npm test -- tests/docker.build.test.js` |
+| **Docker smoke** (optional, requires Docker) | `npm run docker:smoke` |
 | **API integration** (Express + Supertest + in-memory Mongo) | `npm test -- tests/auth.integration.test.js` · `npm test -- tests/task.integration.test.js` |
 | **Unit** (auth client validation vs backend rules) | `npm test -- tests/authValidation.unit.test.js` |
 | **DOM** (jsdom; e.g. sign-in error UI with mocked `fetch`) | `npm test -- tests/signin.dom.test.js` |
@@ -171,12 +236,16 @@ The static site (`public/index.html`) uses the auth endpoints from the browser.
 | `routes/` | Express routers mounted under `/api`. |
 | `public/` | Static UI (`index.html`, `css/`, `js/`). |
 | `seed.js` | Sample data loader. |
+| `Dockerfile` | Production app image (`node server.js`, non-root user). |
+| `docker-compose.yml` | **app** + **mongo** services, private network, named volume. |
+| `docker-compose.host-mongo.yml` | **app** only; connects to MongoDB on the host (`host.docker.internal:27017`). |
 
 ---
 
 ## Troubleshooting
 
-- **“MongoDB connection error” on start** — MongoDB is not running or `MONGODB_URI` is wrong. Start `mongod` locally or fix the URI (Atlas IP allowlist, user/password in URI).
+- **Docker `failed to register layer` / I/O error on `docker compose up`** — Usually **disk full**. Run `docker system prune -af`, free Mac storage, restart Docker Desktop, then retry. Or use **`npm run docker:up:host-mongo`** after **`npm run mongo:start`** (avoids pulling `mongo:6`).
+- **“MongoDB connection error” on start** — MongoDB is not running or `MONGODB_URI` is wrong. Local: **`npm run mongo:start`**. Or use **`docker compose up --build`**. Atlas: fix the URI (IP allowlist, credentials).
 - **`/tasks.html` lists are empty for Alice** — The **Open for you** list only shows **other people’s** open tasks (you cannot claim your own). **Your tasks as taker** only lists work where **you are the assigned taker**. If your database only has tasks you own, or none where you are taker, both lists can be empty even though tasks exist. For the full demo dataset, use **`npm run seed:reset`** (local only) or **`npm run seed`** on an empty database, or sign in as **ben@example.com** / **eve@example.com** (demo users) to see mixed data, or add tasks owned by another user with status **Open** and no taker.
 - **Port already in use (`EADDRINUSE`)** — Another process uses port 3000. Stop it or run `PORT=3001 npm start` (and open `http://localhost:3001`).
 - **Sign-in works but refresh “forgets” state** — The UI stores the signed-in user in **`sessionStorage`**; that is per-tab and cleared when the session/tab ends. Server-side sessions can be added later with `express-session` + cookie `credentials` in `fetch`.
