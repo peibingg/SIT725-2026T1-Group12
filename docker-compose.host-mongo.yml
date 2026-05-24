@@ -1,0 +1,20 @@
+# App-only Compose: use MongoDB already running on the host (avoids pulling mongo:6).
+# macOS/Windows: host.docker.internal → your machine's 127.0.0.1:27017
+#
+#   npm run mongo:start          # start local mongod if needed
+#   npm run docker:up:host-mongo
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      PORT: ${PORT:-3000}
+      NODE_ENV: ${NODE_ENV:-development}
+      MONGODB_URI: mongodb://host.docker.internal:27017/taskMarketplaceDB
+      SESSION_SECRET: ${SESSION_SECRET:-docker-local-change-SESSION_SECRET-in-env}
+      MONGO_CONNECT_RETRIES: ${MONGO_CONNECT_RETRIES:-15}

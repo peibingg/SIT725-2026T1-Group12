@@ -1,0 +1,18 @@
+# Optional dev override: bind-mount source for live edits (npm install on host still required for IDE).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  app:
+    build:
+      context: .
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./controllers:/app/controllers:ro
+      - ./models:/app/models:ro
+      - ./routes:/app/routes:ro
+      - ./services:/app/services:ro
+      - ./public:/app/public:ro
+      - ./app.js:/app/app.js:ro
+      - ./server.js:/app/server.js:ro
+      - ./seed.js:/app/seed.js:ro
