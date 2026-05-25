@@ -60,6 +60,7 @@ describe('POST /api/auth/signup', () => {
     expect(res.body.user).toBeDefined();
     expect(res.body.user.email).toBe('new@example.com');
     expect(res.body.user).not.toHaveProperty('password_hash');
+    expect(res.body.user.credit_balance).toBe(100);
 
     const stored = await User.findOne({ email: 'new@example.com' }).select('+password_hash');
     expect(stored.password_hash).toMatch(/^\$2[aby]\$/);
@@ -109,7 +110,7 @@ describe('GET /api/auth/me profile', () => {
       .expect(201);
 
     const me1 = await agent.get('/api/auth/me').expect(200);
-    expect(me1.body.user.credit_balance).toBe(0);
+    expect(me1.body.user.credit_balance).toBe(100);
     expect(me1.body.user).not.toHaveProperty('password_hash');
 
     await User.updateOne({ email: 'balance@example.com' }, { $set: { credit_balance: 99 } });

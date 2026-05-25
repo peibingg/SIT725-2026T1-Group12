@@ -1,0 +1,42 @@
+# Task Marketplace — app + MongoDB (US-11)
+# Usage: cp .env.example .env  →  set SESSION_SECRET  →  docker compose up --build
+# Open http://localhost:${PORT:-3000}  ·  Health: GET /api/health
+
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-net
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    environment:
+      PORT: ${PORT:-3000}
+      # development default so session cookies work over http://localhost (set production + HTTPS in real deploy)
+      NODE_ENV: ${NODE_ENV:-development}
+      MONGODB_URI: mongodb://mongo:27017/taskMarketplaceDB
+      SESSION_SECRET: ${SESSION_SECRET:-docker-local-change-SESSION_SECRET-in-env}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - app-net
+
+volumes:
+  mongo_data:
+
+networks:
+  app-net:
+    driver: bridge

@@ -135,6 +135,7 @@ describe('POST /api/tasks', () => {
   it('returns 403 when credit_balance is 0', async () => {
     const agent = request.agent(app);
     await signup(agent, 'zero-balance@example.com', 'Zero');
+    await setCreditBalance('zero-balance@example.com', 0);
     const res = await agent.post('/api/tasks').send(validPayload).expect(403);
     expect(res.body.message).toMatch(/positive credit balance/i);
   });
