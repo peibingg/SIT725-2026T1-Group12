@@ -19,7 +19,7 @@
         <div id="header-user" class="header-user hidden">
           <a class="header-link" href="/tasks.html" id="link-tasks">Tasks</a>
           <a class="header-link" href="/profile.html" id="link-profile" aria-current="page">Profile</a>
-          <span id="header-user-meta" class="header-user-meta"></span>
+          id="header-user-meta" class="header-user-meta"></span>
           <button type="button" id="btn-signout-header" class="btn btn-header btn-ghost">Sign out</button>
         </div>
       </nav>
@@ -34,7 +34,7 @@
           <p class="profile-lead">Your balance is loaded from the server whenever you open or refresh this page.</p>
           <p class="profile-tasks-hint">
             <a class="header-link profile-tasks-link" href="/tasks.html">Browse tasks</a>
-            <span class="profile-tasks-hint-text"> — claim open work or finish tasks you are assigned.</span>
+            "profile-tasks-hint-text"> — claim open work or finish tasks you are assigned.</span>
           </p>
           <button type="button" id="btn-profile-refresh" class="btn btn-ghost btn-profile-refresh">Refresh balance</button>
         </header>
@@ -52,7 +52,9 @@
 
         <section class="profile-password-card" aria-labelledby="password-heading">
           <h2 id="password-heading" class="profile-section-title">Change password</h2>
-          <p class="profile-section-lead">Use a strong password. The server validates and stores it securely.</p>
+          <p class="profile-section-lead">
+            New passwords must meet the same rules as registration. Sign-in accepts your existing password (no minimum length on login).
+          </p>
           <form id="form-change-password" class="auth-form" novalidate autocomplete="off">
             <label>
               Current password
@@ -60,11 +62,29 @@
             </label>
             <label>
               New password
-              <input type="password" name="new_password" autocomplete="new-password" minlength="6" required />
+              <input
+                type="password"
+                name="new_password"
+                autocomplete="new-password"
+                minlength="8"
+                maxlength="128"
+                aria-describedby="new-password-hint"
+                required
+              />
+              id="new-password-hint" class="field-hint"
+                >8–128 characters, at least one letter and one number, not only spaces, not a common password.</span
+              >
             </label>
             <label>
               Confirm new password
-              <input type="password" name="confirm_password" autocomplete="new-password" minlength="6" required />
+              <input
+                type="password"
+                name="confirm_password"
+                autocomplete="new-password"
+                minlength="8"
+                maxlength="128"
+                required
+              />
             </label>
             <button type="submit" class="btn btn-submit">Update password</button>
           </form>
@@ -99,7 +119,18 @@
           </label>
           <label>
             Password
-            <input type="password" name="password" autocomplete="new-password" minlength="6" required />
+            <input
+              type="password"
+              name="password"
+              autocomplete="new-password"
+              minlength="8"
+              maxlength="128"
+              aria-describedby="signup-password-hint-profile"
+              required
+            />
+            id="signup-password-hint-profile" class="field-hint"
+              >8–128 characters, at least one letter and one number, not only spaces, not a common password.</span
+            >
           </label>
           <button type="submit" class="btn btn-submit">Create account</button>
         </form>
@@ -127,9 +158,11 @@
       </div>
     </dialog>
 
+    <script src="/js/authPolicy.js"></script>
     <script src="/js/authValidation.js"></script>
     <script src="/js/flash.js"></script>
     <script src="/js/scripts.js"></script>
     <script src="/js/profile.js"></script>
   </body>
 </html>
+ 

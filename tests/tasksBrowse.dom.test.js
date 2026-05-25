@@ -20,7 +20,7 @@ function loadHomeShell() {
     <button type="button" id="btn-open-signup"></button>
     <button type="button" id="btn-open-signin"></button>
     <button type="button" id="btn-signout-header"></button>
-    <span id="header-user-meta"></span>
+    id="header-user-meta"></span>
     <dialog id="modal-signup"><div class="modal-panel"><form id="form-signup"></form><p id="signup-msg"></p></div></dialog>
     <dialog id="modal-signin"><div class="modal-panel">
       <form id="form-signin" class="auth-form" novalidate>
@@ -44,6 +44,7 @@ function loadHomeShell() {
 
 function clearScriptCache() {
   jest.resetModules();
+  delete require.cache[path.join(__dirname, '../public/js/authPolicy.js')];
   delete require.cache[path.join(__dirname, '../public/js/authValidation.js')];
   delete require.cache[path.join(__dirname, '../public/js/flash.js')];
   delete require.cache[path.join(__dirname, '../public/js/scripts.js')];
@@ -105,3 +106,4 @@ describe('Browse Open Tasks (home DOM)', () => {
     expect(modal.hasAttribute('open')).toBe(true);
   });
 });
+ 

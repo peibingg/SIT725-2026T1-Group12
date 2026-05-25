@@ -39,6 +39,33 @@ describe('POST /api/auth/signup', () => {
       .post('/api/auth/signup')
       .send({ first_name: 'A', last_name: 'B', email: 'ok@example.com', password: '12345' });
     expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Password must be 8–128 characters');
+    expect(await User.countDocuments()).toBe(0);
+  });
+
+  it('returns 400 for password without a letter and number', async () => {
+    const res = await request(app)
+      .post('/api/auth/signup')
+      .send({ first_name: 'A', last_name: 'B', email: 'weak@example.com', password: '12345678' });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Password must include a letter and a number');
+    expect(await User.findOne({ email: 'weak@example.com' })).toBeNull();
+  });
+
+  it('returns 400 for whitespace-only password', async () => {
+    const res = await request(app)
+      .post('/api/auth/signup')
+      .send({ first_name: 'A', last_name: 'B', email: 'space@example.com', password: '        ' });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Password cannot be only spaces');
+  });
+
+  it('returns 400 for blocklisted password', async () => {
+    const res = await request(app)
+      .post('/api/auth/signup')
+      .send({ first_name: 'A', last_name: 'B', email: 'block@example.com', password: 'password1' });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Password is too common');
   });
 
   it('returns 409 for duplicate email', async () => {
@@ -68,6 +95,12 @@ describe('POST /api/auth/signup', () => {
 });
 
 describe('POST /api/auth/signin and session', () => {
+  it('returns 400 for invalid email format', async () => {
+    const res = await request(app).post('/api/auth/signin').send({ email: 'not-an-email', password: 'secret12' });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Valid email is required');
+  });
+
   it('returns 401 for wrong password', async () => {
     await request(app)
       .post('/api/auth/signup')
@@ -77,6 +110,21 @@ describe('POST /api/auth/signin and session', () => {
       .send({ email: 'g@example.com', password: 'wrongpass' });
     expect(res.status).toBe(401);
     expect(res.body.message).toMatch(/Invalid email or password/i);
+  });
+
+  it('allows sign-in with a legacy short password when account exists (no min length on login)', async () => {
+    const bcrypt = require('bcryptjs');
+    await User.create({
+      first_name: 'Legacy',
+      last_name: 'User',
+      email: 'legacy@example.com',
+      password_hash: await bcrypt.hash('123456', 10),
+      role: 'User',
+    });
+
+    const res = await request(app).post('/api/auth/signin').send({ email: 'legacy@example.com', password: '123456' });
+    expect(res.status).toBe(200);
+    expect(res.body.user.email).toBe('legacy@example.com');
   });
 
   it('GET /api/auth/me returns 401 without session', async () => {
@@ -156,7 +204,7 @@ describe('PATCH /api/auth/password', () => {
       new_password: '12345',
     });
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe('Password must be at least 6 characters');
+    expect(res.body.message).toBe('Password must be 8–128 characters');
   });
 
   it('returns 400 when confirm_password is sent and does not match new_password', async () => {
@@ -200,3 +248,4 @@ describe('PATCH /api/auth/password', () => {
     await agent2.post('/api/auth/signin').send({ email: 'okchange@example.com', password: 'secondpass12' }).expect(200);
   });
 });
+ 
