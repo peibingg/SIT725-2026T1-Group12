@@ -43,7 +43,16 @@ app.get('/api/health', (req, res) => {
   res.json({ statusCode: 200, message: 'Task Marketplace API', mongoose: mongoose.connection.readyState === 1 });
 });
 
+/** Task detail shell: /tasks/:id (ObjectId) — API auth enforced in taskDetail.js */
+app.get('/tasks/:id', (req, res, next) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return next();
+  }
+  res.sendFile(path.join(__dirname, 'public', 'task-detail.html'));
+});
+
 /** After API routes so /api/... is never shadowed by a future file under public/. */
 app.use(express.static(path.join(__dirname, 'public')));
 
 module.exports = app;
+ 

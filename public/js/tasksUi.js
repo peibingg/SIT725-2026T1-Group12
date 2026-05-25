@@ -28,6 +28,11 @@ function formatPersonName(person) {
 /**
  * @returns {{ preview: string, full: string, isTruncated: boolean }}
  */
+function taskDetailPath(taskId) {
+  if (taskId == null || taskId === '') return '/tasks.html';
+  return `/tasks/${encodeURIComponent(String(taskId))}`;
+}
+
 function truncateDescription(text, maxLen = DESCRIPTION_PREVIEW_MAX) {
   const full = text == null ? '' : String(text);
   const limit = typeof maxLen === 'number' && maxLen > 0 ? maxLen : DESCRIPTION_PREVIEW_MAX;
@@ -42,6 +47,7 @@ const tasksUiApi = {
   STATUS_DISPLAY_LABELS,
   statusToDisplayLabel,
   formatPersonName,
+  taskDetailPath,
   truncateDescription,
 };
 

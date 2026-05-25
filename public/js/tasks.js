@@ -7,8 +7,8 @@
 const TM_STORAGE_USER_KEY = 'taskMarketplaceUser';
 const TM_STORAGE_RETURN_URL_KEY = 'taskMarketplaceReturnUrl';
 
-/** Table column count including Progress (must match tasks.html thead). */
-const TASKS_TABLE_COLSPAN = 8;
+/** Table column count including View + Progress (must match tasks.html thead). */
+const TASKS_TABLE_COLSPAN = 9;
 
 const browseTaskById = new Map();
 
@@ -160,6 +160,19 @@ function buildDescriptionCell(task) {
   }
 
   return td;
+}
+
+function appendViewCell(tr, task) {
+  const ui = getUi();
+  const td = document.createElement('td');
+  td.className = 'tasks-view-cell';
+  const link = document.createElement('a');
+  link.className = 'btn btn-ghost btn-task-view';
+  link.href = ui ? ui.taskDetailPath(task.id) : `/tasks/${encodeURIComponent(task.id)}`;
+  link.textContent = 'View';
+  link.setAttribute('aria-label', `View details for ${task.title || 'task'}`);
+  td.appendChild(link);
+  tr.appendChild(td);
 }
 
 function appendActionsOpen(tr, task) {
@@ -431,9 +444,11 @@ function renderRow(task, mode, currentUserId) {
     appendActionsOpen(tr, task);
     appendProgressCell(tr, task, 'open');
   } else if (mode === 'owner') {
+    appendViewCell(tr, task);
     appendActionsOwner(tr, task);
     appendProgressCell(tr, task, 'owner');
   } else {
+    appendViewCell(tr, task);
     appendActionsMine(tr, task, currentUserId);
     appendProgressCell(tr, task, 'mine');
   }
@@ -798,3 +813,4 @@ function initTasksPage() {
 }
 
 initTasksPage();
+ 

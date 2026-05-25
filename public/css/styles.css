@@ -927,8 +927,114 @@ body {
   white-space: nowrap;
 }
 
-.tasks-progress-cell {
+.tasks-progress-cell,
+.tasks-view-cell {
   white-space: nowrap;
+}
+
+.btn-task-view {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.task-detail-page {
+  padding: 1.5rem 1rem 3rem;
+}
+
+.task-detail-inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.task-detail-back {
+  margin: 0 0 1rem;
+}
+
+.task-detail-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+}
+
+.task-detail-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+}
+
+.task-detail-role {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.task-detail-meta {
+  display: grid;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1.25rem;
+}
+
+.task-detail-meta-row {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.task-detail-meta-row dt {
+  margin: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.task-detail-meta-row dd {
+  margin: 0;
+}
+
+.task-detail-section {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.task-detail-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.task-detail-description {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.task-detail-updates-lead,
+.task-detail-status-note {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.task-detail-comments-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.task-detail-comment-item {
+  padding: 0.65rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.task-detail-comment-meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.task-detail-comment-body {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .btn-task-comments {

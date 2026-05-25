@@ -408,6 +408,16 @@ function renderPostedOpenRow(task, ui) {
   statusTd.textContent = ui ? ui.statusToDisplayLabel(task.status) : task.status || 'Open';
   tr.appendChild(statusTd);
 
+  const viewTd = document.createElement('td');
+  viewTd.className = 'tasks-view-cell';
+  const link = document.createElement('a');
+  link.className = 'btn btn-ghost btn-task-view';
+  link.href = ui ? ui.taskDetailPath(task.id) : `/tasks/${encodeURIComponent(task.id)}`;
+  link.textContent = 'View';
+  link.setAttribute('aria-label', `View details for ${task.title || 'task'}`);
+  viewTd.appendChild(link);
+  tr.appendChild(viewTd);
+
   return tr;
 }
 
@@ -468,3 +478,4 @@ appRoot().TaskMarketplaceTaskCreate = taskCreateApi;
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = taskCreateApi;
 }
+ 
