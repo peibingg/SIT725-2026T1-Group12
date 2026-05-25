@@ -23,7 +23,7 @@ function loadProfileShell() {
   document.body.innerHTML = `
     <div id="header-guest" class="header-auth hidden"></div>
     <div id="header-user" class="header-user">
-      <span id="header-user-meta"></span>
+      id="header-user-meta"></span>
       <button type="button" id="btn-signout-header"></button>
       <button type="button" id="btn-open-signup"></button>
       <button type="button" id="btn-open-signin"></button>
@@ -52,6 +52,7 @@ function loadProfileShell() {
 
 function clearCaches() {
   jest.resetModules();
+  delete require.cache[path.join(__dirname, '../public/js/authPolicy.js')];
   delete require.cache[path.join(__dirname, '../public/js/authValidation.js')];
   delete require.cache[path.join(__dirname, '../public/js/flash.js')];
   delete require.cache[path.join(__dirname, '../public/js/scripts.js')];
@@ -174,6 +175,7 @@ describe('profile page (DOM)', () => {
     await new Promise((r) => setTimeout(r, 25));
 
     expect(globalThis.fetch).not.toHaveBeenCalled();
-    expect(document.getElementById('profile-password-msg').textContent).toBe('Password must be at least 6 characters');
+    expect(document.getElementById('profile-password-msg').textContent).toBe('Password must be 8–128 characters');
   });
 });
+ 

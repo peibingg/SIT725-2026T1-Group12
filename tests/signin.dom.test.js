@@ -9,7 +9,7 @@ function loadAuthPageShell() {
   document.body.innerHTML = `
     <div id="site-flash" class="site-flash hidden"></div>
     <div id="header-guest" class="header-auth"></div>
-    <div id="header-user" class="header-user hidden"><span id="header-user-meta"></span></div>
+    <div id="header-user" class="header-user hidden">id="header-user-meta"></span></div>
     <div id="hero-actions"></div>
     <button type="button" id="btn-open-signup"></button>
     <button type="button" id="btn-open-signin"></button>
@@ -39,6 +39,7 @@ function loadAuthPageShell() {
 
 function clearScriptCache() {
   jest.resetModules();
+  delete require.cache[path.join(__dirname, '../public/js/authPolicy.js')];
   delete require.cache[path.join(__dirname, '../public/js/authValidation.js')];
   delete require.cache[path.join(__dirname, '../public/js/flash.js')];
   delete require.cache[path.join(__dirname, '../public/js/scripts.js')];
@@ -152,3 +153,4 @@ describe('sign-in UI (DOM)', () => {
     expect(sessionStorage.getItem('taskMarketplaceReturnUrl')).toBeNull();
   });
 });
+ 

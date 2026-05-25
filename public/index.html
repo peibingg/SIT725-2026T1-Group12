@@ -18,7 +18,7 @@
         <div id="header-user" class="header-user hidden">
           <a class="header-link" href="/tasks.html" id="link-tasks">Tasks</a>
           <a class="header-link" href="/profile.html" id="link-profile">Profile</a>
-          <span id="header-user-meta" class="header-user-meta"></span>
+          id="header-user-meta" class="header-user-meta"></span>
           <button type="button" id="btn-signout-header" class="btn btn-header btn-ghost">Sign out</button>
         </div>
       </nav>
@@ -49,7 +49,7 @@
         </p>
         <ul class="feature-grid">
           <li class="feature-card">
-            <span class="feature-icon" aria-hidden="true">◇</span>
+            "feature-icon" aria-hidden="true">◇</span>
             <h3 class="feature-title">Post &amp; scope tasks</h3>
             <p class="feature-text">
               Describe the work, attach expectations, and attach a credit value so everyone knows the deal up
@@ -57,14 +57,14 @@
             </p>
           </li>
           <li class="feature-card">
-            <span class="feature-icon" aria-hidden="true">◎</span>
+            "feature-icon" aria-hidden="true">◎</span>
             <h3 class="feature-title">Earn as you deliver</h3>
             <p class="feature-text">
               Complete tasks for others and grow your balance—your credits reflect real contribution over time.
             </p>
           </li>
           <li class="feature-card">
-            <span class="feature-icon" aria-hidden="true">◈</span>
+            "feature-icon" aria-hidden="true">◈</span>
             <h3 class="feature-title">Spend to prioritise</h3>
             <p class="feature-text">
               Allocate credits to attract the right help, reward speed or quality, and keep the marketplace fair.
@@ -77,24 +77,24 @@
         <h2 id="steps-heading" class="section-title">How it works</h2>
         <ol class="steps-list">
           <li>
-            <span class="step-num">1</span>
+            "step-num">1</span>
             <div class="step-body">
               <strong>Create an account</strong>
-              <span class="step-desc">Sign up in seconds—your profile holds your credit balance.</span>
+              "step-desc">Sign up in seconds—your profile holds your credit balance.</span>
             </div>
           </li>
           <li>
-            <span class="step-num">2</span>
+            "step-num">2</span>
             <div class="step-body">
               <strong>List or claim tasks</strong>
-              <span class="step-desc">Post what you need or browse work you can complete for credits.</span>
+              "step-desc">Post what you need or browse work you can complete for credits.</span>
             </div>
           </li>
           <li>
-            <span class="step-num">3</span>
+            "step-num">3</span>
             <div class="step-body">
               <strong>Exchange value fairly</strong>
-              <span class="step-desc">Credits move when work is agreed and done—transparent and repeatable.</span>
+              "step-desc">Credits move when work is agreed and done—transparent and repeatable.</span>
             </div>
           </li>
         </ol>
@@ -125,7 +125,18 @@
           </label>
           <label>
             Password
-            <input type="password" name="password" autocomplete="new-password" minlength="6" required />
+            <input
+              type="password"
+              name="password"
+              autocomplete="new-password"
+              minlength="8"
+              maxlength="128"
+              aria-describedby="signup-password-hint"
+              required
+            />
+            id="signup-password-hint" class="field-hint"
+              >8–128 characters, at least one letter and one number, not only spaces, not a common password.</span
+            >
           </label>
           <button type="submit" class="btn btn-submit">Create account</button>
         </form>
@@ -153,8 +164,10 @@
       </div>
     </dialog>
 
+    <script src="/js/authPolicy.js"></script>
     <script src="/js/authValidation.js"></script>
     <script src="/js/flash.js"></script>
     <script src="/js/scripts.js"></script>
   </body>
 </html>
+ 

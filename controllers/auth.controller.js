@@ -2,10 +2,9 @@
 
 const bcrypt = require('bcryptjs');
 const User = require('../models/user.model');
-const { assertPasswordMeetsPolicy } = require('../validators/auth.validation');
+const { assertPasswordMeetsPolicy, EMAIL_RE } = require('../validators/auth.validation');
 
 const SALT_ROUNDS = 10;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SESSION_COOKIE_NAME = 'tm.sid';
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -76,6 +75,9 @@ const signin = async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({ statusCode: 400, message: 'Email and password are required' });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return res.status(400).json({ statusCode: 400, message: 'Valid email is required' });
     }
 
     const user = await User.findOne({ email }).select('+password_hash');
@@ -195,3 +197,4 @@ const signout = (req, res) => {
 };
 
 module.exports = { ping, signup, signin, me, changePassword, signout };
+ 
