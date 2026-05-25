@@ -1,4 +1,4 @@
-'use strict';
+​'use strict';
 
 const request = require('supertest');
 const mongoose = require('mongoose');
@@ -629,6 +629,13 @@ describe('POST /api/tasks/:id/complete', () => {
     expect(res.body.task.status).toBe('Completed');
     const fresh = await Task.findById(task._id).lean();
     expect(fresh.status).toBe('Completed');
+
+    const ownerBal = (await User.findOne({ email: 'co@example.com' }).lean()).credit_balance;
+    const takerBal = (await User.findOne({ email: 'ct@example.com' }).lean()).credit_balance;
+    expect(ownerBal).toBe(100);
+    expect(takerBal).toBe(100);
+    const nPayout = await Transaction.countDocuments({ task_id: task._id, purpose: 'Payout' });
+    expect(nPayout).toBe(0);
   });
 
   it('non-taker gets 403', async () => {
@@ -802,6 +809,62 @@ describe('POST /api/tasks/:id/approve', () => {
     });
 
     await takerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(403);
+  });
+
+  it('owner with balance exactly equal to task credit pays out and reaches zero', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'ap-exact-o@example.com', 'APEXO');
+    await signup(takerAgent, 'ap-exact-t@example.com', 'APEXT');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap-exact-o@example.com' }, { $set: { credit_balance: 20 } });
+    await User.updateOne({ email: 'ap-exact-t@example.com' }, { $set: { credit_balance: 3 } });
+
+    const task = await Task.create({
+      title: 'Exact balance',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 20,
+      status: 'Completed',
+    });
+
+    await ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(200);
+
+    const ownerBal = (await User.findOne({ email: 'ap-exact-o@example.com' }).lean()).credit_balance;
+    const takerBal = (await User.findOne({ email: 'ap-exact-t@example.com' }).lean()).credit_balance;
+    expect(ownerBal).toBe(0);
+    expect(takerBal).toBe(23);
+  });
+
+  it('owner with balance one less than task credit gets 400', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'ap-minus1-o@example.com', 'APM1O');
+    await signup(takerAgent, 'ap-minus1-t@example.com', 'APM1T');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+    await User.updateOne({ email: 'ap-minus1-o@example.com' }, { $set: { credit_balance: 19 } });
+
+    const task = await Task.create({
+      title: 'One short',
+      description: '',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 20,
+      status: 'Completed',
+    });
+
+    const res = await ownerAgent.post(`/api/tasks/${task._id}/approve`).send({}).expect(400);
+    expect(res.body.statusCode).toBe(400);
+
+    const ownerBal = (await User.findOne({ email: 'ap-minus1-o@example.com' }).lean()).credit_balance;
+    expect(ownerBal).toBe(19);
+    const fresh = await Task.findById(task._id).lean();
+    expect(fresh.status).toBe('Completed');
+    const nPayout = await Transaction.countDocuments({ task_id: task._id, purpose: 'Payout' });
+    expect(nPayout).toBe(0);
   });
 
   it('owner with insufficient credits gets 400', async () => {
