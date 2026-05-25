@@ -364,6 +364,14 @@ describe('US-8 Approve button visibility (DOM)', () => {
     expect(approveButtons[0].textContent).toBe('Approve');
   });
 
+  it('shows View on every owned row regardless of status', async () => {
+    await new Promise((r) => setTimeout(r, 40));
+    const views = document.querySelectorAll('#tasks-owner-body a.btn-task-view');
+    expect(views.length).toBe(4);
+    const hrefs = Array.from(views).map((a) => a.getAttribute('href')).sort();
+    expect(hrefs).toEqual(['/tasks/o-done', '/tasks/o-fin', '/tasks/o-open', '/tasks/o-prog'].sort());
+  });
+
   it('does not show Approve in taker table for Completed task', async () => {
     clearTasksCaches();
     sessionStorage.setItem(
@@ -402,6 +410,68 @@ describe('US-8 Approve button visibility (DOM)', () => {
     await new Promise((r) => setTimeout(r, 40));
     expect(document.querySelector('#tasks-mine-body [data-action="approve"]')).toBeNull();
     expect(document.querySelector('#tasks-mine-body [data-action="complete"]')).toBeNull();
+  });
+});
+
+describe('Task View links (DOM)', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    sessionStorage.setItem(
+      'taskMarketplaceUser',
+      JSON.stringify({
+        id: 'user-1',
+        email: 'taker@example.com',
+        credit_balance: 10,
+        first_name: 'T',
+        last_name: 'K',
+        role: 'User',
+      }),
+    );
+    loadTasksPageShell();
+    clearTasksCaches();
+  });
+
+  it('shows View on owner and taker rows for every status', async () => {
+    const ownerRow = {
+      id: 'owned-1',
+      title: 'Mine as owner',
+      description: 'd',
+      credit: 5,
+      status: 'Completed',
+      owner: { id: 'user-1', first_name: 'T', last_name: 'K', email: 'taker@example.com' },
+      taker: { id: 't2', first_name: 'X', last_name: 'Y', email: 'x@example.com' },
+    };
+    const takerRow = {
+      id: 'taken-1',
+      title: 'Mine as taker',
+      description: 'd',
+      credit: 3,
+      status: 'Finalised',
+      owner: { id: 'o2', first_name: 'O', last_name: 'O', email: 'o@example.com' },
+      taker: { id: 'user-1', first_name: 'T', last_name: 'K', email: 'taker@example.com' },
+    };
+
+    globalThis.fetch = jest.fn().mockResolvedValue(
+      jsonRes(true, 200, {
+        statusCode: 200,
+        openForMe: [],
+        myAsTaker: [takerRow],
+        myAsOwner: [ownerRow],
+      }),
+    );
+
+    require('../public/js/tasksUi.js');
+    require('../public/js/taskCommentsUi.js');
+    require('../public/js/tasks.js');
+
+    await new Promise((r) => setTimeout(r, 40));
+
+    const ownerView = document.querySelector('#tasks-owner-body a.btn-task-view');
+    const takerView = document.querySelector('#tasks-mine-body a.btn-task-view');
+    expect(ownerView).toBeTruthy();
+    expect(ownerView.getAttribute('href')).toBe('/tasks/owned-1');
+    expect(takerView).toBeTruthy();
+    expect(takerView.getAttribute('href')).toBe('/tasks/taken-1');
   });
 });
  

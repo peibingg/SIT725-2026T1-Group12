@@ -454,6 +454,97 @@ describe('GET /api/tasks/browse', () => {
   });
 });
 
+describe('GET /api/tasks/:id', () => {
+  it('returns 401 without session', async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    await request(app).get(`/api/tasks/${fakeId}`).expect(401);
+  });
+
+  it('returns 400 for invalid id', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'getbad@example.com');
+    await agent.get('/api/tasks/not-an-id').expect(400);
+  });
+
+  it('owner gets full task detail for Open task', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'view-o@example.com', 'VO');
+    const me = await agent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'My open posting',
+      description: 'Full desc <b>not html</b>',
+      owner_user_id: new mongoose.Types.ObjectId(me.body.user.id),
+      taker_user_id: null,
+      credit: 5,
+      status: 'Open',
+    });
+
+    const res = await agent.get(`/api/tasks/${task._id}`).expect(200);
+    expect(res.body.task).toMatchObject({
+      title: 'My open posting',
+      description: 'Full desc <b>not html</b>',
+      credit: 5,
+      status: 'Open',
+    });
+    expect(res.body.viewerRole).toBe('owner');
+    expect(res.body.task.owner.id).toBe(me.body.user.id);
+    expect(res.body.task.taker).toBeNull();
+    expect(res.body.task.owner).not.toHaveProperty('password_hash');
+  });
+
+  it('taker gets detail for In Progress task', async () => {
+    const ownerAgent = request.agent(app);
+    const takerAgent = request.agent(app);
+    await signup(ownerAgent, 'view-own@example.com', 'VOWN');
+    await signup(takerAgent, 'view-tak@example.com', 'VTAK');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+    const takerMe = await takerAgent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'Shared task',
+      description: 'Details for taker',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: new mongoose.Types.ObjectId(takerMe.body.user.id),
+      credit: 8,
+      status: 'In Progress',
+    });
+
+    const res = await takerAgent.get(`/api/tasks/${task._id}`).expect(200);
+    expect(res.body.viewerRole).toBe('taker');
+    expect(res.body.task.status).toBe('In Progress');
+    expect(res.body.task.owner.email).toBe('view-own@example.com');
+  });
+
+  it('stranger gets 403 and no task body', async () => {
+    const ownerAgent = request.agent(app);
+    const stranger = request.agent(app);
+    await signup(ownerAgent, 'view-str-o@example.com', 'VSO');
+    await signup(stranger, 'view-str-x@example.com', 'VSX');
+    const ownerMe = await ownerAgent.get('/api/auth/me').expect(200);
+
+    const task = await Task.create({
+      title: 'Private',
+      description: 'secret',
+      owner_user_id: new mongoose.Types.ObjectId(ownerMe.body.user.id),
+      taker_user_id: null,
+      credit: 3,
+      status: 'Open',
+    });
+
+    const res = await stranger.get(`/api/tasks/${task._id}`).expect(403);
+    expect(res.body.statusCode).toBe(403);
+    expect(res.body.task).toBeUndefined();
+  });
+
+  it('returns 404 for missing task', async () => {
+    const agent = request.agent(app);
+    await signup(agent, 'view404@example.com');
+    const missing = new mongoose.Types.ObjectId();
+    await agent.get(`/api/tasks/${missing}`).expect(404);
+  });
+});
+
 describe('POST /api/tasks/:id/take', () => {
   it('returns 401 without session', async () => {
     const fakeId = new mongoose.Types.ObjectId();

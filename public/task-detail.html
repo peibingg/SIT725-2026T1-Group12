@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task detail — Task Marketplace</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="logo" href="/">Task Marketplace</a>
+      <nav class="header-nav" aria-label="Main">
+        <a class="header-link" href="/">Home</a>
+        <a class="header-link" href="/api/health">API health</a>
+        <div id="header-guest" class="header-auth">
+          <button type="button" id="btn-open-signup" class="btn btn-header btn-ghost">Sign up</button>
+          <button type="button" id="btn-open-signin" class="btn btn-header btn-primary">Sign in</button>
+        </div>
+        <div id="header-user" class="header-user hidden">
+          <a class="header-link" href="/tasks.html" id="link-tasks">Tasks</a>
+          <a class="header-link" href="/profile.html" id="link-profile">Profile</a>
+          id="header-user-meta" class="header-user-meta"></span>
+          <button type="button" id="btn-signout-header" class="btn btn-header btn-ghost">Sign out</button>
+        </div>
+      </nav>
+    </header>
+
+    <div id="site-flash" class="site-flash hidden" role="status" aria-live="polite"></div>
+
+    <main id="task-detail-page" class="task-detail-page">
+      <div class="task-detail-inner">
+        <p class="task-detail-back">
+          <a href="/tasks.html" class="header-link">← Back to tasks</a>
+        </p>
+        <p id="task-detail-load-msg" class="form-msg" role="status" aria-live="polite"></p>
+
+        <article id="task-detail-card" class="task-detail-card hidden" aria-labelledby="task-detail-title">
+          <header class="task-detail-header">
+            <h1 id="task-detail-title" class="task-detail-title"></h1>
+            <p id="task-detail-role" class="task-detail-role"></p>
+          </header>
+
+          <dl class="task-detail-meta">
+            <div class="task-detail-meta-row">
+              <dt>Status</dt>
+              <dd id="task-detail-status"></dd>
+            </div>
+            <div class="task-detail-meta-row">
+              <dt>Credits</dt>
+              <dd id="task-detail-credit"></dd>
+            </div>
+            <div class="task-detail-meta-row">
+              <dt>Owner</dt>
+              <dd id="task-detail-owner"></dd>
+            </div>
+            <div class="task-detail-meta-row">
+              <dt>Taker</dt>
+              <dd id="task-detail-taker"></dd>
+            </div>
+            <div class="task-detail-meta-row">
+              <dt>Posted</dt>
+              <dd id="task-detail-created"></dd>
+            </div>
+          </dl>
+
+          <section class="task-detail-section" aria-labelledby="task-detail-desc-heading">
+            <h2 id="task-detail-desc-heading" class="task-detail-section-title">Description</h2>
+            <div id="task-detail-description" class="task-detail-description"></div>
+          </section>
+
+          <section class="task-detail-section" aria-labelledby="task-detail-updates-heading">
+            <h2 id="task-detail-updates-heading" class="task-detail-section-title">Updates</h2>
+            <p class="task-detail-updates-lead">Status changes and progress comments for this task.</p>
+            <p id="task-detail-status-note" class="task-detail-status-note"></p>
+            <p id="task-detail-comments-msg" class="form-msg" role="status"></p>
+            <ul id="task-detail-comments" class="task-detail-comments-list"></ul>
+          </section>
+        </article>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>SIT725 Group 12 · Task Marketplace</p>
+    </footer>
+
+    <dialog id="modal-signup" class="auth-modal" aria-labelledby="signup-title">
+      <div class="modal-panel">
+        <button type="button" class="modal-close" data-close-modal aria-label="Close dialog">×</button>
+        <h2 id="signup-title" class="modal-title">Create your account</h2>
+        <form id="form-signup" class="auth-form" novalidate>
+          <label>First name <input type="text" name="first_name" required /></label>
+          <label>Last name <input type="text" name="last_name" required /></label>
+          <label>Email <input type="email" name="email" required /></label>
+          <label>Password <input type="password" name="password" required /></label>
+          <button type="submit" class="btn btn-submit">Create account</button>
+        </form>
+        <p id="signup-msg" class="form-msg" role="status"></p>
+      </div>
+    </dialog>
+
+    <dialog id="modal-signin" class="auth-modal" aria-labelledby="signin-title">
+      <div class="modal-panel">
+        <button type="button" class="modal-close" data-close-modal aria-label="Close dialog">×</button>
+        <h2 id="signin-title" class="modal-title">Welcome back</h2>
+        <form id="form-signin" class="auth-form" novalidate>
+          <label>Email <input type="email" name="email" required /></label>
+          <label>Password <input type="password" name="password" required /></label>
+          <button type="submit" class="btn btn-submit">Sign in</button>
+        </form>
+        <p id="signin-msg" class="form-msg" role="status"></p>
+      </div>
+    </dialog>
+
+    <script src="/js/authPolicy.js"></script>
+    <script src="/js/authValidation.js"></script>
+    <script src="/js/flash.js"></script>
+    <script src="/js/scripts.js"></script>
+    <script src="/js/tasksUi.js"></script>
+    <script src="/js/taskCommentsUi.js"></script>
+    <script src="/js/taskDetail.js"></script>
+  </body>
+</html>
+ 

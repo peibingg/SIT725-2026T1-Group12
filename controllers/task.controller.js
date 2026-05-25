@@ -103,6 +103,40 @@ const listTasks = async (req, res) => {
   }
 };
 
+const getTaskById = async (req, res) => {
+  const id = req.params.id;
+  if (!mongoose.isValidObjectId(id)) {
+    return invalidIdResponse(res);
+  }
+
+  const taskId = new mongoose.Types.ObjectId(id);
+  const userId = parseUserId(req);
+
+  try {
+    const r = await taskService.getTaskDetailForParticipant({ taskId, userId });
+    if (r.ok) {
+      return res.json({
+        statusCode: 200,
+        task: serializeTask(r.task),
+        viewerRole: r.viewerRole,
+      });
+    }
+    if (r.error === 'NOT_FOUND') {
+      return res.status(404).json({ statusCode: 404, message: 'Task not found' });
+    }
+    if (r.error === 'FORBIDDEN') {
+      return res.status(403).json({
+        statusCode: 403,
+        message: r.message || 'You do not have access to this task',
+      });
+    }
+    return res.status(403).json({ statusCode: 403, message: r.message || 'Access denied' });
+  } catch (err) {
+    console.error('getTaskById error:', err.message);
+    res.status(500).json({ statusCode: 500, message: 'Could not load task' });
+  }
+};
+
 const browse = async (req, res) => {
   try {
     const userId = parseUserId(req);
@@ -277,8 +311,10 @@ module.exports = {
   createMeta,
   createTask,
   listTasks,
+  getTaskById,
   browse,
   takeTask,
   completeTask,
   approveTask,
 };
+ 
