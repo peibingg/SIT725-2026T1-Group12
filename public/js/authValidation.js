@@ -1,45 +1,47 @@
 'use strict';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_PASSWORD_LENGTH = 6;
+/**
+ * Client-side auth validation only. Password hashing is performed on the server (bcrypt);
+ * the browser must never hash passwords or persist password_hash — see POST /api/auth/signup.
+ */
+const policy =
+  typeof require !== 'undefined'
+    ? require('./authPolicy.js')
+    : globalThis.TaskMarketplaceAuthPolicy;
+
+if (!policy) {
+  throw new Error('authPolicy.js must be loaded before authValidation.js');
+}
+
+const { EMAIL_RE, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH, PASSWORD_POLICY_HINT, assertPasswordMeetsPolicy } =
+  policy;
 
 function validateSignupPayload({ first_name, last_name, email, password }) {
   const fn = (first_name || '').trim();
   const ln = (last_name || '').trim();
   const em = (email || '').trim();
-  const pw = password || '';
+  const pw = password == null ? '' : String(password);
 
   if (!fn || !ln) {
     return { ok: false, message: 'First name and last name are required' };
   }
-
   if (!em || !EMAIL_RE.test(em)) {
     return { ok: false, message: 'Valid email is required' };
   }
-
-  if (pw.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, message: 'Password must be at least 6 characters' };
-  }
-
-  return { ok: true, message: '' };
+  return assertPasswordMeetsPolicy(pw);
 }
 
+/** Sign-in: email format only; no minimum password length (existing accounts may predate policy). */
 function validateSigninPayload({ email, password }) {
   const em = (email || '').trim();
-  const pw = password || '';
+  const pw = password == null ? '' : String(password);
 
   if (!em || !pw) {
     return { ok: false, message: 'Email and password are required' };
   }
-
   if (!EMAIL_RE.test(em)) {
     return { ok: false, message: 'Valid email is required' };
   }
-
-  if (pw.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, message: 'Password must be at least 6 characters' };
-  }
-
   return { ok: true, message: '' };
 }
 
@@ -51,26 +53,33 @@ function validateChangePasswordPayload({ current_password, new_password, confirm
   if (!cur || !nw) {
     return { ok: false, message: 'Current password and new password are required' };
   }
-
   if (!cf) {
     return { ok: false, message: 'Please confirm your new password' };
   }
-
-  if (nw.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, message: 'Password must be at least 6 characters' };
+  const policyResult = assertPasswordMeetsPolicy(nw);
+  if (!policyResult.ok) {
+    return policyResult;
   }
-
   if (nw !== cf) {
     return { ok: false, message: 'New password and confirmation do not match' };
   }
-
   return { ok: true, message: '' };
 }
 
-module.exports = {
+const authValidationApi = {
   EMAIL_RE,
   MIN_PASSWORD_LENGTH,
+  MAX_PASSWORD_LENGTH,
+  PASSWORD_POLICY_HINT,
   validateSignupPayload,
   validateSigninPayload,
   validateChangePasswordPayload,
 };
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.TaskMarketplaceAuth = authValidationApi;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = authValidationApi;
+}
+ 

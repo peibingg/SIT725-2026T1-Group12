@@ -19,7 +19,7 @@
         <div id="header-user" class="header-user hidden">
           <a class="header-link" href="/tasks.html" id="link-tasks" aria-current="page">Tasks</a>
           <a class="header-link" href="/profile.html" id="link-profile">Profile</a>
-          <span id="header-user-meta" class="header-user-meta"></span>
+          id="header-user-meta" class="header-user-meta"></span>
           <button type="button" id="btn-signout-header" class="btn btn-header btn-ghost">Sign out</button>
         </div>
       </nav>
@@ -161,7 +161,18 @@
           </label>
           <label>
             Password
-            <input type="password" name="password" autocomplete="new-password" minlength="6" required />
+            <input
+              type="password"
+              name="password"
+              autocomplete="new-password"
+              minlength="8"
+              maxlength="128"
+              aria-describedby="signup-password-hint"
+              required
+            />
+            id="signup-password-hint" class="field-hint"
+              >8–128 characters, at least one letter and one number, not only spaces, not a common password.</span
+            >
           </label>
           <button type="submit" class="btn btn-submit">Create account</button>
         </form>
@@ -185,8 +196,8 @@
               maxlength="200"
               required
             />
-            <span id="create-task-title-count" class="field-counter" aria-live="polite">0 / 200</span>
-            <span id="create-task-title-error" class="field-error form-msg" role="alert"></span>
+            id="create-task-title-count" class="field-counter" aria-live="polite">0 / 200</span>
+            id="create-task-title-error" class="field-error form-msg" role="alert"></span>
           </label>
           <label class="create-task-field">
             Description
@@ -197,13 +208,13 @@
               maxlength="20000"
               required
             ></textarea>
-            <span id="create-task-description-count" class="field-counter" aria-live="polite">0 / 20000</span>
-            <span id="create-task-description-error" class="field-error form-msg" role="alert"></span>
+            id="create-task-description-count" class="field-counter" aria-live="polite">0 / 20000</span>
+            id="create-task-description-error" class="field-error form-msg" role="alert"></span>
           </label>
           <fieldset class="create-task-credit-fieldset">
             <legend>Credit reward</legend>
             <div id="create-task-credit-options" class="create-task-credit-options" role="radiogroup" aria-label="Credit reward"></div>
-            <span id="create-task-credit-error" class="field-error form-msg" role="alert"></span>
+            id="create-task-credit-error" class="field-error form-msg" role="alert"></span>
           </fieldset>
           <p id="create-task-form-msg" class="form-msg create-task-form-msg" role="status"></p>
           <button type="submit" id="btn-create-task-submit" class="btn btn-submit">Publish task</button>
@@ -231,6 +242,7 @@
       </div>
     </dialog>
 
+    <script src="/js/authPolicy.js"></script>
     <script src="/js/authValidation.js"></script>
     <script src="/js/flash.js"></script>
     <script src="/js/scripts.js"></script>
@@ -243,3 +255,4 @@
     <script src="/js/tasks.js?v=2"></script>
   </body>
 </html>
+ 

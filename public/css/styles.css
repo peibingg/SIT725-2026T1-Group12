@@ -784,6 +784,14 @@ body {
   color: var(--danger, #c0392b);
 }
 
+.field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .field-error {
   min-height: 1.1rem;
   font-size: 0.82rem;
@@ -1021,3 +1029,4 @@ body {
     max-width: 140px;
   }
 }
+ 

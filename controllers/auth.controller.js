@@ -2,16 +2,19 @@
 
 const bcrypt = require('bcryptjs');
 const User = require('../models/user.model');
-const { assertPasswordMeetsPolicy } = require('../validators/auth.validation');
+const { assertPasswordMeetsPolicy, EMAIL_RE } = require('../validators/auth.validation');
 
 const SALT_ROUNDS = 10;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SESSION_COOKIE_NAME = 'tm.sid';
 const isProd = process.env.NODE_ENV === 'production';
 
 function setSessionUser(req, userId) {
   req.session.userId = userId.toString();
 }
+
+const ping = (req, res) => {
+  res.json({ statusCode: 200, message: 'auth controller skeleton' });
+};
 
 const signup = async (req, res) => {
   try {
@@ -23,11 +26,9 @@ const signup = async (req, res) => {
     if (!first_name || !last_name) {
       return res.status(400).json({ statusCode: 400, message: 'First name and last name are required' });
     }
-
     if (!email || !EMAIL_RE.test(email)) {
       return res.status(400).json({ statusCode: 400, message: 'Valid email is required' });
     }
-
     const passwordPolicy = assertPasswordMeetsPolicy(password);
     if (!passwordPolicy.ok) {
       return res.status(400).json({ statusCode: 400, message: passwordPolicy.message });
@@ -39,7 +40,6 @@ const signup = async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
-
     const user = await User.create({
       first_name,
       last_name,
@@ -76,20 +76,16 @@ const signin = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ statusCode: 400, message: 'Email and password are required' });
     }
-
-    // ✅ FIX: email format validation added (required by spec)
     if (!EMAIL_RE.test(email)) {
       return res.status(400).json({ statusCode: 400, message: 'Valid email is required' });
     }
 
     const user = await User.findOne({ email }).select('+password_hash');
-
     if (!user) {
       return res.status(401).json({ statusCode: 401, message: 'Invalid email or password' });
     }
 
     const match = await bcrypt.compare(password, user.password_hash);
-
     if (!match) {
       return res.status(401).json({ statusCode: 401, message: 'Invalid email or password' });
     }
@@ -114,6 +110,34 @@ const signin = async (req, res) => {
   }
 };
 
+const me = async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId).select('-password_hash');
+    if (!user) {
+      req.session.destroy(() => {});
+      return res.status(401).json({ statusCode: 401, message: 'Authentication required' });
+    }
+
+    res.set('Cache-Control', 'private, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+
+    res.json({
+      statusCode: 200,
+      user: {
+        id: user._id.toString(),
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        credit_balance: user.credit_balance,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error('me error:', err.message);
+    res.status(500).json({ statusCode: 500, message: 'Could not load profile' });
+  }
+};
+
 const changePassword = async (req, res) => {
   try {
     const current_password = req.body.current_password ?? '';
@@ -121,22 +145,12 @@ const changePassword = async (req, res) => {
     const confirm_password = req.body.confirm_password;
 
     if (!String(current_password) || !String(new_password)) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: 'Current password and new password are required',
-      });
+      return res.status(400).json({ statusCode: 400, message: 'Current password and new password are required' });
     }
 
-    if (
-      confirm_password !== undefined &&
-      confirm_password !== null &&
-      String(confirm_password) !== ''
-    ) {
+    if (confirm_password !== undefined && confirm_password !== null && String(confirm_password) !== '') {
       if (String(new_password) !== String(confirm_password)) {
-        return res.status(400).json({
-          statusCode: 400,
-          message: 'New password and confirmation do not match',
-        });
+        return res.status(400).json({ statusCode: 400, message: 'New password and confirmation do not match' });
       }
     }
 
@@ -166,8 +180,21 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = {
-  signup,
-  signin,
-  changePassword,
+const signout = (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('signout error:', err.message);
+      return res.status(500).json({ statusCode: 500, message: 'Could not sign out' });
+    }
+    res.clearCookie(SESSION_COOKIE_NAME, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isProd,
+    });
+    res.json({ statusCode: 200, message: 'Signed out' });
+  });
 };
+
+module.exports = { ping, signup, signin, me, changePassword, signout };
+ 
