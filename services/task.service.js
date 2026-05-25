@@ -2,102 +2,95 @@
 
 const mongoose = require('mongoose');
 const Task = require('../models/task.model');
-const User = require('../models/user.model');
-const { validateTaskCreatePayload, buildCreateMeta } = require('../validators/task.validation');
-const taskStatusService = require('./taskStatus.service');
+const creditService = require('./credit.service');
 
-const USER_POPULATE_SELECT = taskStatusService.USER_POPULATE_SELECT;
+const USER_POPULATE_SELECT = creditService.USER_POPULATE_SELECT;
 
-async function loadUserCreditBalance(userId) {
-  const user = await User.findById(userId).select('credit_balance');
-  if (!user) {
-    return { ok: false, httpStatus: 401, message: 'Authentication required' };
-  }
-  return { ok: true, creditBalance: user.credit_balance };
-}
-
-async function getCreateMeta(userId) {
-  const loaded = await loadUserCreditBalance(userId);
-  if (!loaded.ok) return loaded;
-  return { ok: true, meta: buildCreateMeta(loaded.creditBalance) };
-}
-
-async function createTask({ ownerUserId, title, description, credit }) {
-  const loaded = await loadUserCreditBalance(ownerUserId);
-  if (!loaded.ok) return loaded;
-
-  const validated = validateTaskCreatePayload({
-    title,
-    description,
-    credit,
-    creditBalance: loaded.creditBalance,
-  });
-  if (!validated.ok) {
-    return {
-      ok: false,
-      httpStatus: validated.httpStatus,
-      message: validated.message,
-    };
-  }
-
-  const task = await Task.create({
-    title: validated.title,
-    description: validated.description,
-    credit: validated.credit,
-    owner_user_id: ownerUserId,
-    status: 'Open',
-    taker_user_id: null,
-  });
-
-  await task.populate('owner_user_id', USER_POPULATE_SELECT);
-  await task.populate('taker_user_id', USER_POPULATE_SELECT);
-
-  return { ok: true, task };
-}
-
-function scopeFilter(userId, scope) {
-  const normalized = (scope || 'all').toLowerCase();
-
-  if (normalized === 'owner') {
-    return { owner_user_id: userId };
-  }
-  if (normalized === 'taker') {
-    return { taker_user_id: userId };
-  }
-  if (normalized === 'open') {
-    return {
+/**
+ * Open → In Progress (claim). Single atomic findOneAndUpdate; concurrent claims lose with NOT_CLAIMABLE.
+ */
+async function claimTask({ taskId, userId }) {
+  const updated = await Task.findOneAndUpdate(
+    {
+      _id: taskId,
       status: 'Open',
       taker_user_id: null,
       owner_user_id: { $ne: userId },
-    };
-  }
-
-  return {
-    $or: [
-      { owner_user_id: userId },
-      { taker_user_id: userId },
-      {
-        status: 'Open',
-        taker_user_id: null,
-        owner_user_id: { $ne: userId },
-      },
-    ],
-  };
-}
-
-async function listTasks({ userId, scope }) {
-  const filter = scopeFilter(userId, scope);
-  const tasks = await Task.find(filter)
-    .sort({ created: -1 })
+    },
+    { $set: { status: 'In Progress', taker_user_id: userId } },
+    { new: true }
+  )
     .populate('owner_user_id', USER_POPULATE_SELECT)
     .populate('taker_user_id', USER_POPULATE_SELECT);
 
-  return { ok: true, tasks };
+  if (updated) {
+    return { ok: true, task: updated };
+  }
+
+  const task = await Task.findById(taskId);
+  if (!task) {
+    return { ok: false, error: 'NOT_FOUND' };
+  }
+  if (task.owner_user_id.equals(userId)) {
+    return { ok: false, error: 'OWN_TASK' };
+  }
+  if (task.status === 'In Progress' || task.status === 'Completed' || task.status === 'Finalised') {
+    return {
+      ok: false,
+      error: 'NOT_CLAIMABLE',
+      message: 'Task is not open for claiming (already in progress, completed, or finalised).',
+    };
+  }
+  if (task.status === 'Open' && task.taker_user_id) {
+    return { ok: false, error: 'NOT_CLAIMABLE', message: 'Task is not available to claim.' };
+  }
+  return { ok: false, error: 'NOT_CLAIMABLE', message: 'Task is not available to claim.' };
+}
+
+/**
+ * In Progress → Completed. Only assigned taker; atomic conditional update.
+ * Does not transfer credits (payout runs on owner approve → Finalised).
+ */
+async function completeTaskByTaker({ taskId, userId }) {
+  const updated = await Task.findOneAndUpdate(
+    {
+      _id: taskId,
+      status: 'In Progress',
+      taker_user_id: userId,
+    },
+    { $set: { status: 'Completed' } },
+    { new: true }
+  )
+    .populate('owner_user_id', USER_POPULATE_SELECT)
+    .populate('taker_user_id', USER_POPULATE_SELECT);
+
+  if (updated) {
+    return { ok: true, task: updated };
+  }
+
+  const task = await Task.findById(taskId);
+  if (!task) {
+    return { ok: false, error: 'NOT_FOUND' };
+  }
+  if (!task.taker_user_id || !task.taker_user_id.equals(userId)) {
+    return { ok: false, error: 'NOT_TAKER' };
+  }
+  return { ok: false, error: 'WRONG_STATE', message: 'Task is not in progress.' };
+}
+
+/**
+ * Completed → Finalised + credit transfer. Owner only (US-8 / FR-8, FR-9).
+ * Delegates payout to credit.service (single server-side entry for balance changes).
+ */
+async function approveCompletedByOwner({ taskId, ownerUserId }) {
+  return creditService.executeTaskPayout({ taskId, ownerUserId });
 }
 
 module.exports = {
-  getCreateMeta,
-  createTask,
-  listTasks,
+  claimTask,
+  completeTaskByTaker,
+  approveCompletedByOwner,
+  resetTransactionSupportCache: creditService.resetTransactionSupportCache,
   USER_POPULATE_SELECT,
 };
+ 
