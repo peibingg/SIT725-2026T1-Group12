@@ -1,4 +1,4 @@
-​'use strict';
+'use strict';
 
 const request = require('supertest');
 const mongoose = require('mongoose');
