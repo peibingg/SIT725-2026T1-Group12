@@ -20,7 +20,7 @@ function loadHomeShell() {
     <button type="button" id="btn-open-signup"></button>
     <button type="button" id="btn-open-signin"></button>
     <button type="button" id="btn-signout-header"></button>
-    id="header-user-meta"></span>
+    <span id="header-user-meta"></span>
     <dialog id="modal-signup"><div class="modal-panel"><form id="form-signup"></form><p id="signup-msg"></p></div></dialog>
     <dialog id="modal-signin"><div class="modal-panel">
       <form id="form-signin" class="auth-form" novalidate>

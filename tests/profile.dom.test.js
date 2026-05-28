@@ -23,7 +23,7 @@ function loadProfileShell() {
   document.body.innerHTML = `
     <div id="header-guest" class="header-auth hidden"></div>
     <div id="header-user" class="header-user">
-      id="header-user-meta"></span>
+      <span id="header-user-meta"></span>
       <button type="button" id="btn-signout-header"></button>
       <button type="button" id="btn-open-signup"></button>
       <button type="button" id="btn-open-signin"></button>
